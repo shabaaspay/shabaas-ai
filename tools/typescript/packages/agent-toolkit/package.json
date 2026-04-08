@@ -1,0 +1,43 @@
+{
+  "name": "@shabaaspay/agent-toolkit",
+  "version": "0.1.0",
+  "description": "Agent toolkit for integrating ShaBaasPay APIs with popular agent frameworks through function calling.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shabaaspay/shabaas-ai"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./langchain": "./dist/langchain.js",
+    "./ai-sdk": "./dist/ai-sdk.js",
+    "./modelcontextprotocol": "./dist/modelcontextprotocol.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "axios": "^1.13.6",
+    "zod": "^3.22.0",
+    "zod-to-json-schema": "^3.23.5"
+  },
+  "peerDependencies": {
+    "@langchain/core": "*",
+    "ai": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
+

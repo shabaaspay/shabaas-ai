@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: ShaBaasPay API
+  version: 0.1.0
+  description: |
+    Public OpenAPI specification for ShaBaasPay.
+    This file is a starter placeholder and should be replaced with the finalized
+    Monoova-based spec adapted for ShaBaasPay.
+servers:
+  - url: https://api.shabaas.com
+    description: Production
+  - url: https://api-staging.shabaas.com
+    description: Staging
+paths: {}
+
