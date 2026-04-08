@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/shabaas-ai-hero.svg" alt="ShaBaas AI hero" width="100%" />
+</p>
+
 # ShaBaas AI
 
 This repo is the one-stop shop for building AI-powered products and workflows on top of ShaBaasPay.
