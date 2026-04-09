@@ -8,7 +8,7 @@ This repo is the one-stop shop for building AI-powered products and workflows on
 
 It contains SDKs and integration assets to connect ShaBaasPay with LLMs and agent frameworks, including:
 
-- `@shabaaspay/agent-toolkit` - for integrating ShaBaasPay APIs with popular agent frameworks through function calling (TypeScript).
+- [`@shabaaspay/agent-toolkit`](https://github.com/shabaaspay/shabaas-ai/tree/main/tools/typescript/packages/agent-toolkit) - for integrating ShaBaasPay APIs with popular agent frameworks through function calling (TypeScript).
 - OpenAPI artifacts - for schema-driven integrations and tooling generation.
 
 ## Model Context Protocol (MCP)
