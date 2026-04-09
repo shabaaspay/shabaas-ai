@@ -143,5 +143,4 @@ npm run build
 
 ## OpenAPI
 
-- `openapi/openapi.yaml` (placeholder to be finalized with the Monoova-based spec)
-
+- OpenAPI - [`shabaaspay/openapi`](https://github.com/shabaaspay/openapi).
