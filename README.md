@@ -143,4 +143,4 @@ npm run build
 
 ## OpenAPI
 
-- OpenAPI - [`shabaaspay/openapi`](https://github.com/shabaaspay/openapi).
+- [`openapi/openapi.yaml`](./openapi/openapi.yaml)

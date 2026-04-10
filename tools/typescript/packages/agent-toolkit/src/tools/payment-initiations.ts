@@ -16,7 +16,14 @@ export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config
         if (!validation.success) return validationErrorResponse(validation.errors ?? [], config.environment);
         try {
           const start = Date.now();
-          const { enrich = true, include_raw = false, ...payload } = validation.data as any;
+          const { enrich = true, include_raw = false, authorization: _auth, description, notes, ...rest } =
+            validation.data as any;
+          const noteText = notes ?? description;
+          const payload = {
+            payment_agreement_id: rest.payment_agreement_id,
+            amount: rest.amount,
+            ...(noteText !== undefined && noteText !== '' ? { notes: noteText } : {})
+          };
           const response = await apiClient.initiatePayment(payload, { requestUuid: context?.requestUuid });
           if (!enrich) {
             return {

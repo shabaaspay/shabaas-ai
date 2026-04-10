@@ -110,7 +110,11 @@ export const InitiatePaymentInputSchema = z.object({
   authorization: authorizationParam,
   payment_agreement_id: z.string(),
   amount: z.union([z.string(), z.number()]).refine((val) => Number(val) > 0, 'Amount must be greater than zero'),
-  description: z.string().optional(),
+  notes: z.string().optional().describe('Sent to API as payment_initiation.notes'),
+  description: z
+    .string()
+    .optional()
+    .describe('Alias for notes when calling tools; mapped to API field `notes`'),
   enrich: z.boolean().optional().default(true),
   include_raw: z.boolean().optional().default(false)
 });
