@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: ShaBaasPay MCP API
+  title: ShaBaasPay Public API
   version: 1.0.0
   description: |
-    OpenAPI source for the ShaBaas AI agent.
+    Describes the public PayTo endpoints (authorization, payment agreements, payment initiations).
 servers:
   - url: https://dev-api.shabaas.com
     description: Staging
@@ -19,11 +19,10 @@ paths:
   /api/public/authorization:
     post:
       tags: [Authorization]
-      x-mcp-tool: get_auth_token
       summary: Exchange API key for bearer token
       description: |
-        Used by MCP tool `get_auth_token`.
-        Send merchant API key in `Authorization` header (raw key or `Bearer <key>`).
+        Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
+        Send the merchant API key in `Authorization` (raw key or `Bearer <key>`).
       security: []
       responses:
         '200':
@@ -63,10 +62,9 @@ paths:
   /api/public/payment_agreement:
     get:
       tags: [Payment Agreements]
-      x-mcp-tool: get_payment_agreement
       summary: Get payment agreement
       description: |
-        Used by MCP tool `get_payment_agreement` (by `id`).
+        Retrieve a payment agreement by `id` (payment_agreement_id).
       parameters:
         - in: query
           name: id
@@ -108,9 +106,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Agreements]
-      x-mcp-tool: create_payment_agreement
       summary: Create payment agreement
-      description: Used by MCP tool `create_payment_agreement`.
+      description: Create a PayTo payment agreement.
       requestBody:
         required: true
         content:
@@ -217,9 +214,8 @@ paths:
   /api/public/payment_initiation:
     get:
       tags: [Payment Initiations]
-      x-mcp-tool: get_payment_initiation
       summary: Get payment initiation
-      description: Used by MCP tool `get_payment_initiation`.
+      description: Retrieve a payment initiation by `id` (payment_initiation_id).
       parameters:
         - in: query
           name: id
@@ -261,10 +257,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Initiations]
-      x-mcp-tool: initiate_payment
       summary: Initiate payment
       description: |
-        Used by MCP tool `initiate_payment`.
+        Initiate a payment against an active payment agreement.
       requestBody:
         required: true
         content:
@@ -532,4 +527,4 @@ components:
           description: Optional note on the initiation.
         description:
           type: string
-          description: Not stored by the API; use `notes`. Some clients map this to `notes`.
+          description: Ignored by the API; use `notes` for optional text.
