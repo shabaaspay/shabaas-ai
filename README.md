@@ -143,9 +143,9 @@ npm run build
 
 ## OpenAPI
 
-- [`openapi/openapi.yaml`](./openapi/openapi.yaml)
+- [`OpenAPI`](./openapi/README.md)
 
 
 ## Public API 
 
-- [`publicapi/shabaaspay-public-api.yaml`](./publicapi/shabaaspay-public-api.yaml)
+- [`PublicAPI`](./publicapi/README.md)
