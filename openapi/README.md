@@ -1,4 +1,4 @@
-# OpenAPI
+# OpenAPI Specifications
 
 This directory contains the MCP-related OpenAPI specification.
 

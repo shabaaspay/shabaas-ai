@@ -1,6 +1,6 @@
-# Public API
+# Rest API specification
 
-This directory contains the public REST API specification.
+This directory contains the public Rest API specification.
 
 - [`Shabaaspay Public API YAML`](./shabaaspay-public-api.yaml) — OpenAPI spec for API reference import.
 
