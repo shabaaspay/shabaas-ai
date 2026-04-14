@@ -146,6 +146,7 @@ npm run build
 - [`OpenAPI`](./openapi/README.md)
 
 
-## Public API 
+## REST API 
 
 - [`RestAPI`](./restapi/README.md)
+- Includes REST OpenAPI coverage for auth, agreements, initiations, webhooks, PayID collections, and invoice endpoints.
