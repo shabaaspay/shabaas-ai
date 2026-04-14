@@ -144,6 +144,7 @@ npm run build
 ## OpenAPI
 
 - [`OpenAPI`](./openapi/README.md)
+- Includes MCP OpenAPI coverage for the toolkit tools: auth, payment agreement (create/get), and payment initiation (create/get).
 
 
 ## REST API 
