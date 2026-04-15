@@ -374,8 +374,10 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: Bearer token returned by `/api/public/authorization`.
+      bearerFormat: opaque
+      description: |
+        Bearer token returned by `/api/public/authorization` after exchanging a ShaBaas API key.
+        For MCP edge access, clients send the API key in `Authorization` (plain or `Bearer <key>`).
 
   schemas:
     ErrorResponse:
@@ -446,7 +448,6 @@ components:
         - maximum_amount
         - frequency
         - number_of_transactions_permitted
-        - pay_id
       properties:
         phone_number:
           type: string
@@ -483,6 +484,15 @@ components:
         end_date:
           type: string
           format: date
+      allOf:
+        - if:
+            properties:
+              type:
+                const: bsb
+          then:
+            required: [bsb, account_number]
+          else:
+            required: [pay_id]
 
     PaymentInitiation:
       type: object
