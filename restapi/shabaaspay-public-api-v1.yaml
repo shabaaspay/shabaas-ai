@@ -1,0 +1,1240 @@
+openapi: 3.0.3
+info:
+  title: ShaBaasPay Public API
+  version: 1.0.0
+  description: |
+    Describes public REST endpoints for authorization, payment agreements, payment initiations,
+    webhooks, invoice generation, and PayID collection APIs.
+servers:
+  - url: https://dev-api.shabaas.com
+    description: Staging
+  - url: https://api.shabaas.com
+    description: Production
+tags:
+  - name: Payment Request
+    x-displayName: Payment Request
+    description: Create inbound payment requests and query their status.
+  - name: Payment Agreement
+    x-displayName: Payment Agreement
+    description: Create, retrieve, amend, resend, and cancel PayTo payment agreements.
+  - name: Payment Agreement Request
+    x-displayName: Payment Agreement Request
+    description: Generate payer approval flows for agreement setup where applicable.
+  - name: Payment Initiation
+    x-displayName: Payment Initiation
+    description: Create and retrieve payment initiations linked to active agreements.
+  - name: Clients
+    x-displayName: Clients
+    description: Merchant-level access and account configuration endpoints.
+  - name: API Keys
+    x-displayName: API Keys
+    description: Authentication and key-based access controls for API usage.
+  - name: Webhooks
+    x-displayName: Webhooks
+    description: Configure notification endpoints for agreement and payment events.
+x-tagGroups:
+  - name: Receive Payments
+    tags:
+      - Payment Request
+  - name: Payment Agreements
+    tags:
+      - Payment Agreement
+      - Payment Agreement Request
+      - Payment Initiation
+  - name: Accounts
+    tags:
+      - Clients
+  - name: Configuration
+    tags:
+      - API Keys
+      - Webhooks
+security:
+  - BearerAuth: []
+paths:
+  /api/public/authorization:
+    post:
+      tags: [API Keys, Clients]
+      summary: Exchange API key for bearer token
+      description: |
+        Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
+        Send the merchant API key in `Authorization` (raw key or `Bearer <key>`).
+      security: []
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessAuthorizationResponse'
+        '401':
+          description: Invalid API key or merchant not allowed to authenticate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_api_key:
+                  summary: Unknown or wrong API key
+                  value:
+                    message: Invalid API Key
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                account_not_active:
+                  summary: Merchant exists but is not active
+                  value:
+                    message: Account not activated yet
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '408':
+          description: Upstream timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_agreement:
+    get:
+      tags: [Payment Agreement]
+      summary: Get payment agreement
+      description: |
+        Retrieve a payment agreement by `id` (payment_agreement_id).
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          description: payment_agreement_id
+      responses:
+        '200':
+          description: Payment agreement returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  value:
+                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Payment Agreement]
+      summary: Create payment agreement
+      description: Create a PayTo payment agreement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                payment_agreement:
+                  $ref: '#/components/schemas/CreatePaymentAgreementRequest'
+            examples:
+              valid:
+                summary: Valid request (stored frequency code)
+                value:
+                  payment_agreement:
+                    name: John Smith
+                    type: email
+                    maximum_amount: "500"
+                    frequency: ADHO
+                    number_of_transactions_permitted: 10
+                    pay_id: sample@shabaas.com
+              frequency_alias:
+                summary: Alias normalized by API (DAILY→DAIL, ADHOC→ADHO)
+                value:
+                  payment_agreement:
+                    name: John Smith
+                    type: email
+                    maximum_amount: "500"
+                    frequency: DAILY
+                    number_of_transactions_permitted: 10
+                    pay_id: sample@shabaas.com
+              invalid_frequency:
+                summary: Invalid frequency (e.g. DAY is not a valid code or alias)
+                value:
+                  payment_agreement:
+                    name: Hamza Amin
+                    type: email
+                    maximum_amount: "500"
+                    frequency: DAY
+                    number_of_transactions_permitted: 10
+                    pay_id: sample@shabaas.com
+      responses:
+        '200':
+          description: Payment agreement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Developer credits exhausted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                developer_credits:
+                  value:
+                    message: Developer credits exhausted
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '404':
+          description: Related resource not found (specific flows)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation, or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_frequency:
+                  summary: Frequency not accepted after normalization
+                  value:
+                    message: Invalid frequency value
+                    error_code: VALIDATION_ERROR
+                    data:
+                      field: frequency
+                      stored_codes: [ADHO, DAIL, FRTN, INDA, MIAN, MNTH, QURT, WEEK, YEAR]
+                      aliases: { DAILY: DAIL, ADHOC: ADHO }
+                monoova_payee:
+                  summary: Payee cannot receive NPP (example)
+                  value:
+                    message: Payee account cannot receive NPP Payments
+                    error_code: MOV_NPP_PAYMENT_NOT_SUPPORTED
+                    data:
+                      response_time: "2026-04-08T12:28:26.759Z"
+
+  /api/public/payment_agreement/resend:
+    patch:
+      tags: [Payment Agreement]
+      summary: Resend payment agreement authorization request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                payment_agreement:
+                  $ref: '#/components/schemas/ResendPaymentAgreementRequest'
+            examples:
+              by_id:
+                value:
+                  payment_agreement:
+                    id: "3652PA20260408123221550"
+              by_phone_number:
+                value:
+                  payment_agreement:
+                    phone_number: "+61-422020901"
+      responses:
+        '200':
+          description: Resend submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '404':
+          description: User or agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                user_not_found:
+                  value:
+                    message: User not found
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                agreement_not_found:
+                  value:
+                    message: PaymentAgreement not found for PaymentAgreementUID
+                    error_code: PAM_SB_PAG_NOT_FOUND_ERROR
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '422':
+          description: Resend business rule failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                resend_limit:
+                  value:
+                    message: Maximum resend attempts reached
+                    error_code: RESEND_MAX_REACHED
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+
+  /api/public/payment_agreement/bilateral:
+    patch:
+      tags: [Payment Agreement]
+      summary: Bilateral amend payment agreement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                payment_agreement:
+                  $ref: '#/components/schemas/BilateralAmendPaymentAgreementRequest'
+            examples:
+              default:
+                value:
+                  payment_agreement:
+                    id: "3652PA20260408123221550"
+                    maximum_amount: "500"
+                    frequency: WEEK
+                    number_of_transactions_permitted: "10"
+                    agreement_type: VARI
+      responses:
+        '200':
+          description: Bilateral amendment submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or monoova business rule failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                amount_rule:
+                  value:
+                    message: Amount exceeds merchant limit
+                    error_code: M100
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+
+  /api/public/payment_agreement/cancel:
+    delete:
+      tags: [Payment Agreement]
+      summary: Cancel payment agreement
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agreement cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_agreement/one_time:
+    post:
+      tags: [Payment Agreement Request, Payment Agreement]
+      summary: Create one-time payment agreement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                payment_agreement:
+                  $ref: '#/components/schemas/CreateOneTimePaymentAgreementRequest'
+                destination:
+                  $ref: '#/components/schemas/DestinationAccount'
+      responses:
+        '200':
+          description: One-time agreement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '422':
+          description: Validation or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/generate_invoice:
+    post:
+      tags: [Payment Request]
+      summary: Generate invoice checkout URL
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uuid, invoice]
+              properties:
+                uuid:
+                  type: string
+                  description: Merchant checkout username or merchant secret.
+                phone_number:
+                  type: string
+                invoice:
+                  $ref: '#/components/schemas/GenerateInvoiceRequest'
+      responses:
+        '200':
+          description: Invoice checkout URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Success
+                  data:
+                    type: object
+                    properties:
+                      checkout_url:
+                        type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_initiation:
+    get:
+      tags: [Payment Initiation]
+      summary: Get payment initiation
+      description: Retrieve a payment initiation by `id` (payment_initiation_id).
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          description: payment_initiation_id
+      responses:
+        '200':
+          description: Payment initiation returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment initiation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  value:
+                    message: Payment Initiation not found
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Payment Initiation]
+      summary: Initiate payment
+      description: |
+        Initiate a payment against an active payment agreement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_initiation]
+              properties:
+                payment_initiation:
+                  $ref: '#/components/schemas/CreatePaymentInitiationRequest'
+            examples:
+              minimal:
+                value:
+                  payment_initiation:
+                    payment_agreement_id: "3652PA20260408123221550"
+                    amount: "10.00"
+              with_notes:
+                summary: With optional note
+                value:
+                  payment_initiation:
+                    payment_agreement_id: "3652PA20260408123221550"
+                    amount: 10
+                    notes: Invoice 1042
+      responses:
+        '200':
+          description: Payment initiation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Developer credits exhausted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                developer_credits:
+                  value:
+                    message: Developer credits exhausted
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '404':
+          description: Payment agreement not found for merchant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                agreement_missing:
+                  value:
+                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Agreement inactive, limits, cooldown, or other business errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                agreement_inactive:
+                  summary: Agreement exists but is not active
+                  value:
+                    message: MONOOVA-monoova.PAS_AGREEMENT_STATUS_INACTIVE
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                cooldown:
+                  summary: Too soon vs recent initiation (example code)
+                  value:
+                    message: MONOOVA-monoova.R804
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                amount_limit:
+                  summary: Amount exceeds agreement or per-tx cap (example)
+                  value:
+                    message: MONOOVA-monoova.R101
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                monoova_failed:
+                  summary: Initiation failed at scheme (representative)
+                  value:
+                    message: MONOOVA-monoova.R803
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+
+  /api/public/payment_initiation/direct_debit:
+    post:
+      tags: [Payment Initiation]
+      summary: Initiate direct debit payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [direct_debit]
+              properties:
+                direct_debit:
+                  $ref: '#/components/schemas/DirectDebitInitiationRequest'
+                destination:
+                  $ref: '#/components/schemas/DestinationAccount'
+      responses:
+        '200':
+          description: Direct debit initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+        '422':
+          description: Direct debit validation or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                consent_required:
+                  value:
+                    message: Consent is required
+                    error_code: R104
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                cooldown_23h:
+                  value:
+                    message: Similar payment attempted within last 23 hours
+                    error_code: R801
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+
+  /api/public/webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Create or update webhook endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookUpsertRequest'
+      responses:
+        '200':
+          description: Webhook saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Invalid webhook payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Webhooks]
+      summary: Get webhook endpoints
+      responses:
+        '200':
+          description: Webhook configuration returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Success
+                  data:
+                    $ref: '#/components/schemas/WebhookConfig'
+        '404':
+          description: Webhook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/collections/payid:
+    post:
+      tags: [Payment Request]
+      summary: Create inbound PayID collection
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayIdCollectionRequest'
+      responses:
+        '200':
+          description: PayID created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPayIdCreateResponse'
+        '404':
+          description: Payment method not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or creation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/collections/payid/status:
+    get:
+      tags: [Payment Request]
+      summary: Get inbound PayID status
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: payid
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: expected_amount
+          required: false
+          schema:
+            type: number
+      responses:
+        '200':
+          description: PayID status returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPayIdStatusResponse'
+        '404':
+          description: PayID not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token returned by `/api/public/authorization`.
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Merchant API key in `Authorization` header.
+
+  schemas:
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success
+        data:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [message, error_code, data]
+      properties:
+        message:
+          type: string
+          example: Payee account cannot receive NPP Payments
+        error_code:
+          type: string
+          example: MOV_NPP_PAYMENT_NOT_SUPPORTED
+        data:
+          type: object
+          additionalProperties: true
+          example:
+            response_time: "2026-04-08T12:28:26.759Z"
+
+    SuccessAuthorizationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              example: Bearer eyJhbGciOiJIUzI1NiJ9...
+
+    PaymentAgreement:
+      type: object
+      properties:
+        payment_agreement_id:
+          type: string
+        status:
+          type: string
+        end_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        maximum_amount:
+          type: string
+        extented_status:
+          type: string
+        message:
+          type: string
+          description: Present when agreement has a failure message from scheme
+        failure_code:
+          type: string
+
+    SuccessPaymentAgreementResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PaymentAgreement'
+
+    CreatePaymentAgreementRequest:
+      type: object
+      required:
+        - name
+        - type
+        - maximum_amount
+        - frequency
+        - number_of_transactions_permitted
+        - pay_id
+      properties:
+        phone_number:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          description: Payee identifier type (for example email).
+        maximum_amount:
+          type: string
+          description: Maximum debit amount per agreement.
+        frequency:
+          type: string
+          description: |
+            Stored codes (after normalization): ADHO, DAIL, FRTN, INDA, MIAN, MNTH, QURT, WEEK, YEAR.
+            Aliases before save: DAILY→DAIL, ADHOC→ADHO.
+        number_of_transactions_permitted:
+          type: integer
+        pay_id:
+          type: string
+        bsb:
+          oneOf:
+            - type: string
+            - type: integer
+        account_number:
+          oneOf:
+            - type: string
+            - type: integer
+        agreement_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    ResendPaymentAgreementRequest:
+      type: object
+      description: Provide either agreement `id` or `phone_number`.
+      oneOf:
+        - required: [id]
+        - required: [phone_number]
+      properties:
+        id:
+          type: string
+        phone_number:
+          type: string
+
+    BilateralAmendPaymentAgreementRequest:
+      type: object
+      required:
+        - id
+        - maximum_amount
+        - frequency
+        - number_of_transactions_permitted
+        - agreement_type
+      properties:
+        id:
+          type: string
+        maximum_amount:
+          type: string
+        frequency:
+          type: string
+        number_of_transactions_permitted:
+          oneOf:
+            - type: string
+            - type: integer
+        agreement_type:
+          type: string
+
+    CreateOneTimePaymentAgreementRequest:
+      type: object
+      required: [name, amount]
+      properties:
+        phone_number:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+        notes:
+          type: string
+        bsb:
+          oneOf:
+            - type: string
+            - type: integer
+        account_number:
+          oneOf:
+            - type: string
+            - type: integer
+        type:
+          type: string
+        pay_id:
+          type: string
+        frequency:
+          type: string
+        number_of_transactions_permitted:
+          oneOf:
+            - type: string
+            - type: integer
+        agreement_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    GenerateInvoiceRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+        description:
+          type: string
+        bill_to:
+          type: string
+        address:
+          type: string
+        receiver_abn:
+          type: string
+        ref_no:
+          type: string
+        gst_included:
+          type: boolean
+        gst_does_not_apply:
+          type: boolean
+        email:
+          type: string
+          format: email
+
+    DestinationAccount:
+      type: object
+      properties:
+        bsb:
+          type: string
+        account_number:
+          type: string
+
+    PaymentInitiation:
+      type: object
+      properties:
+        payment_initiation_id:
+          type: string
+        payment_agreement_id:
+          type: string
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        settled:
+          type: boolean
+        transfer:
+          type: string
+        failure_code:
+          type: string
+        message:
+          type: string
+
+    SuccessPaymentInitiationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PaymentInitiation'
+
+    CreatePaymentInitiationRequest:
+      type: object
+      required: [payment_agreement_id, amount]
+      properties:
+        payment_agreement_id:
+          type: string
+        amount:
+          oneOf:
+            - type: number
+            - type: string
+        notes:
+          type: string
+          description: Optional note on the initiation.
+        description:
+          type: string
+          description: Ignored by the API; use `notes` for optional text.
+
+    DirectDebitInitiationRequest:
+      type: object
+      required: [name, phone_number, bsb, amount, consent_received]
+      properties:
+        id:
+          type: string
+        phone_number:
+          type: string
+        name:
+          type: string
+        token:
+          type: string
+        maximum_amount:
+          oneOf:
+            - type: string
+            - type: number
+        type:
+          type: string
+        bsb:
+          type: string
+        account_number:
+          type: string
+        pay_id:
+          type: string
+        checkout_page:
+          type: string
+        notes:
+          type: string
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+        consent_received:
+          type: string
+          enum: ["true"]
+          description: Must be the string value `"true"`.
+
+    WebhookUpsertRequest:
+      type: object
+      required:
+        - auth_key
+        - payment_agreement
+        - payment_initiation
+        - direct_debit_accepted
+        - direct_debit_rejected
+      properties:
+        auth_key:
+          type: string
+        payment_agreement:
+          type: string
+          format: uri
+        payment_initiation:
+          type: string
+          format: uri
+        direct_debit_accepted:
+          type: string
+          format: uri
+        direct_debit_rejected:
+          type: string
+          format: uri
+
+    WebhookConfig:
+      type: object
+      properties:
+        payment_agreement:
+          type: string
+          format: uri
+        payment_initiation:
+          type: string
+          format: uri
+        direct_debit_accepted:
+          type: string
+          format: uri
+        direct_debit_rejected:
+          type: string
+          format: uri
+
+    CreatePayIdCollectionRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: float
+        merchant_id:
+          type: string
+        merchant_display_name:
+          type: string
+        merchant_country:
+          type: string
+          example: AU
+        merchant_category:
+          type: string
+
+    SuccessPayIdCreateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Payid created successfully
+        data:
+          type: object
+          properties:
+            payid:
+              type: string
+            amount:
+              oneOf:
+                - type: number
+                - type: string
+            status:
+              type: string
+              example: CREATED
+            expires_at:
+              type: string
+              example: "2026-01-02 08:49:46"
+
+    SuccessPayIdStatusResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Payid status
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              example: PENDING
+            received_at:
+              type: string
+              nullable: true
+            expected_amount:
+              type: number
+            received_amount:
+              type: number
+
+    ErrorModel:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+      description: Compatibility alias for the standard error envelope.
+
+    PaymentRequestObj:
+      type: object
+      required: [PaymentRequest]
+      properties:
+        PaymentRequest:
+          $ref: '#/components/schemas/CreatePayIdCollectionRequest'
+      description: Compatibility wrapper for payment request payloads.
+
+    PaymentRequestStatusObj:
+      allOf:
+        - $ref: '#/components/schemas/SuccessPayIdStatusResponse'
+      description: Compatibility wrapper for payment request status payloads.
+
+    PaymentAgreementObj:
+      type: object
+      required: [PaymentAgreement]
+      properties:
+        PaymentAgreement:
+          $ref: '#/components/schemas/CreatePaymentAgreementRequest'
+      description: Compatibility wrapper for payment agreement payloads.
+
+    PaymentAgreementStatusObj:
+      allOf:
+        - $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+      description: Compatibility wrapper for payment agreement status payloads.
+
+    PaymentInitiationObj:
+      type: object
+      required: [PaymentInitiation]
+      properties:
+        PaymentInitiation:
+          $ref: '#/components/schemas/CreatePaymentInitiationRequest'
+      description: Compatibility wrapper for payment initiation payloads.
+
+    PaymentInitiationStatusObj:
+      allOf:
+        - $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+      description: Compatibility wrapper for payment initiation status payloads.
