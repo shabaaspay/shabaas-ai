@@ -58,6 +58,13 @@ paths:
       description: |
         Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
         Send the merchant API key in `Authorization` (raw key or `Bearer <key>`).
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | AUTH_001 | 401 | Invalid API key | Verify the API key and retry with the correct credential. |
+        | AUTH_002 | 401 | Merchant account is not active | Activate the merchant account before requesting a token. |
+        | AUTH_003 | 408 | Upstream timeout | Retry with backoff; if persistent, contact support with request timestamp. |
       security: []
       responses:
         '200':
@@ -100,6 +107,12 @@ paths:
       summary: Get payment agreement
       description: |
         Retrieve a payment agreement by `id` (payment_agreement_id).
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found for this merchant | Confirm the `id` and ensure it belongs to the authenticated merchant. |
+        | PAM_NPP_GATEWAY_TIMEOUT | 408 | Upstream timeout | Retry with backoff; if still failing, contact support. |
       parameters:
         - in: query
           name: id
@@ -142,7 +155,17 @@ paths:
     post:
       tags: [Payment Agreement]
       summary: Create payment agreement
-      description: Create a PayTo payment agreement.
+      description: |
+        Create a PayTo payment agreement.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | M101 | 422 | Amount exceeds platform single-agreement threshold | Reduce `maximum_amount` to supported threshold. |
+        | M100 | 422 | Amount exceeds merchant agreement limit | Update merchant limits or lower `maximum_amount`. |
+        | MOV_NPP_PAYMENT_NOT_SUPPORTED | 422 | Payee account cannot receive NPP payments | Use a valid PayID/account that can receive NPP payments. |
+        | VALIDATION_ERROR | 422 | Invalid request fields (for example frequency) | Correct payload format and accepted enum values. |
+        | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
       requestBody:
         required: true
         content:
@@ -250,6 +273,15 @@ paths:
     patch:
       tags: [Payment Agreement]
       summary: Resend payment agreement authorization request
+      description: |
+        Re-issue an agreement authorization request using agreement id or phone number.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | USER_NOT_FOUND | 404 | User not found by provided phone number | Verify `phone_number` and retry. |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify the agreement id belongs to the merchant. |
+        | RESEND_MAX_REACHED | 422 | Maximum resend attempts reached | Wait for reset window before retrying resend. |
       requestBody:
         required: true
         content:
@@ -313,6 +345,15 @@ paths:
     patch:
       tags: [Payment Agreement]
       summary: Bilateral amend payment agreement
+      description: |
+        Submit bilateral amendment details for an existing payment agreement.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify the target agreement id or phone mapping. |
+        | M101 | 422 | Requested amount exceeds hard threshold | Lower `maximum_amount` to an allowed value. |
+        | M100 | 422 | Requested amount exceeds merchant limit | Increase merchant limit or lower the requested amount. |
       requestBody:
         required: true
         content:
@@ -363,6 +404,13 @@ paths:
     delete:
       tags: [Payment Agreement]
       summary: Cancel payment agreement
+      description: |
+        Cancel an existing payment agreement by id.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Check `id` and ensure it belongs to this merchant. |
       parameters:
         - in: query
           name: id
@@ -387,6 +435,14 @@ paths:
     post:
       tags: [Payment Agreement Request, Payment Agreement]
       summary: Create one-time payment agreement
+      description: |
+        Create a one-time payment agreement flow linked to checkout.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | VALIDATION_ERROR | 422 | Invalid one-time agreement payload | Validate required fields and formats before retrying. |
+        | PAM_NPP_GATEWAY_ERROR | 422 | Upstream processing error | Retry request; if repeated, contact support with request details. |
       requestBody:
         required: true
         content:
@@ -417,6 +473,15 @@ paths:
     post:
       tags: [Payment Request]
       summary: Generate invoice checkout URL
+      description: |
+        Generate a checkout URL for invoice collection flow.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | UNAUTHORIZED_OPERATION | 401 | Merchant identifier is invalid or unauthorized | Verify `uuid` and merchant access. |
+        | PA_INVALID_AMOUNT | 422 | Invoice amount exceeds allowed threshold | Reduce invoice amount and retry. |
+        | VALIDATION_ERROR | 422 | Invalid invoice payload | Correct request body fields and retry. |
       security: []
       requestBody:
         required: true
@@ -466,7 +531,13 @@ paths:
     get:
       tags: [Payment Initiation]
       summary: Get payment initiation
-      description: Retrieve a payment initiation by `id` (payment_initiation_id).
+      description: |
+        Retrieve a payment initiation by `id` (payment_initiation_id).
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAYMENT_INITIATION_NOT_FOUND | 404 | Payment initiation not found | Verify the `id` belongs to this merchant and retry. |
       parameters:
         - in: query
           name: id
@@ -511,6 +582,20 @@ paths:
       summary: Initiate payment
       description: |
         Initiate a payment against an active payment agreement.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify `payment_agreement_id` and merchant ownership. |
+        | PAS_AGREEMENT_STATUS_INACTIVE | 422 | Agreement is not active | Activate agreement before initiating payment. |
+        | R804 | 422 | Duplicate/too-soon payment initiation detected | Wait for cooldown window and retry once eligible. |
+        | R101 | 422 | Amount exceeds per-transaction/agreement limit | Reduce `amount` to allowed limit. |
+        | R102 | 422 | Daily spend limit exceeded | Retry next cycle or reduce amount. |
+        | R100 | 422 | Daily transaction count limit exceeded | Retry next day or after account review. |
+        | R103 | 422 | Destination payout not allowed for merchant settings | Enable eligible payout settings or remove destination. |
+        | R803 | 422 | Upstream initiation failed | Retry; if persistent, contact support with request metadata. |
+        | R805 | 200 | Upstream timeout with accepted processing state | Poll status using get endpoint until terminal state. |
+        | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
       requestBody:
         required: true
         content:
@@ -619,6 +704,19 @@ paths:
     post:
       tags: [Payment Initiation]
       summary: Initiate direct debit payment
+      description: |
+        Create direct debit initiation and process settlement workflow.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | R104 | 422 | Consent is missing or invalid | Set `consent_received` to `"true"` and retry. |
+        | R101 | 422 | Amount exceeds allowed threshold | Reduce `amount` and retry. |
+        | R801 | 422 | Similar debit attempted within cooldown period | Wait for cooldown window and retry. |
+        | R102 | 422 | Daily spend limit exceeded | Retry later or reduce amount. |
+        | R100 | 422 | Daily transaction count exceeded | Retry next day or after account review. |
+        | R103 | 422 | Destination payout not enabled | Update merchant payout settings or remove destination. |
+        | R803 | 422 | Direct debit initiation failed upstream | Retry; if repeated, contact support with request details. |
       requestBody:
         required: true
         content:
@@ -662,6 +760,13 @@ paths:
     post:
       tags: [Webhooks]
       summary: Create or update webhook endpoints
+      description: |
+        Create or update webhook callback endpoints for merchant event notifications.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | VALIDATION_ERROR | 422 | Webhook payload is invalid | Ensure all webhook URLs and auth key values are valid. |
       requestBody:
         required: true
         content:
@@ -684,6 +789,13 @@ paths:
     get:
       tags: [Webhooks]
       summary: Get webhook endpoints
+      description: |
+        Retrieve currently configured webhook endpoints for the merchant.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | WEBHOOK_NOT_FOUND | 404 | No webhook configuration exists for this merchant | Configure webhooks first using create/update endpoint. |
       responses:
         '200':
           description: Webhook configuration returned
@@ -708,6 +820,16 @@ paths:
     post:
       tags: [Payment Request]
       summary: Create inbound PayID collection
+      description: |
+        Create a PayID collection request and return a generated PayID reference.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | INVALID_AMOUNT | 422 | Amount is invalid or less than/equal to zero | Provide a positive amount and retry. |
+        | PAYMENT_METHOD_NOT_FOUND | 404 | Merchant payment method is missing | Configure merchant payment method before creating PayID. |
+        | PAYID_ALREADY_EXISTS | 422 | Generated PayID already exists | Retry request to generate a new PayID. |
+        | PAYID_CREATE_FAILED | 422 | Upstream PayID creation failed | Retry with valid details or contact support. |
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -740,6 +862,13 @@ paths:
     get:
       tags: [Payment Request]
       summary: Get inbound PayID status
+      description: |
+        Retrieve status for a previously created PayID collection.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAYID_NOT_FOUND | 404 | PayID record not found for this merchant | Verify `payid` and merchant authorization, then retry. |
       security:
         - ApiKeyAuth: []
       parameters:
