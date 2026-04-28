@@ -116,7 +116,11 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_PAGID_REQUIRED | 400 | `payment_agreement_id` is missing | Provide a valid agreement id in query params. |
+        | PAM_PAGID_INVALID | 400 | Agreement id format is invalid | Correct the id format and retry. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found for this merchant | Confirm the `id` and ensure it belongs to the authenticated merchant. |
+        | PAM_FORBIDDEN_ERROR | 403 | Merchant is not allowed to access this agreement | Verify merchant/account permissions. |
+        | PAM_MAPPING_ERROR | 500 | Internal mapping error while resolving agreement | Retry later; contact support if repeated. |
         | PAM_NPP_GATEWAY_TIMEOUT | 408 | Upstream timeout | Retry with backoff; if still failing, contact support. |
       parameters:
         - in: query
@@ -194,9 +198,21 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_REQ_BODY_INVALID | 400 | Malformed request body | Validate JSON payload structure and field types. |
+        | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Send `payment_agreement` object with required fields. |
+        | PAM_VALIDATION_ERROR | 400 | Request validation failed | Correct invalid/missing fields and retry. |
+        | PAM_PAYEE_MISSING | 400 | Payee details are missing | Provide PayID or valid account details. |
+        | PAM_PAYEE_ACCT_MISSING | 400 | Payee account details are missing | Include both BSB and account number when required. |
+        | PAM_PAYEE_BSB_INVALID | 400 | Payee BSB is invalid | Use a valid 6-digit BSB. |
+        | PAM_PAYEE_ACCT_INVALID | 400 | Payee account number is invalid | Provide a valid account number. |
+        | PAM_PMT_FREQ_INVALID | 400 | Frequency value is invalid | Use one of supported frequency values. |
+        | PAM_PAG_LIMIT_EXCEEDED | 400 | Merchant agreement limit exceeded | Reduce request volume or increase limit. |
         | M101 | 422 | Amount exceeds platform single-agreement threshold | Reduce `maximum_amount` to supported threshold. |
         | M100 | 422 | Amount exceeds merchant agreement limit | Update merchant limits or lower `maximum_amount`. |
         | MOV_NPP_PAYMENT_NOT_SUPPORTED | 422 | Payee account cannot receive NPP payments | Use a valid PayID/account that can receive NPP payments. |
+        | MOV_PAYEE_DETAIL_ERROR | 404 | Payee details are incorrect | Correct PayID/BSB/account details. |
+        | MOV_INVALID_BSB | 400 | BSB is invalid | Provide a valid BSB and retry. |
+        | MOV_REQUEST_TIMEOUT | 408 | Provider request timed out | Retry with backoff and poll status if needed. |
         | VALIDATION_ERROR | 422 | Invalid request fields (for example frequency) | Correct payload format and accepted enum values. |
         | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
       requestBody:
@@ -348,9 +364,12 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_REQ_BODY_INVALID | 400 | Malformed resend payload | Send `payment_agreement.id` or `payment_agreement.phone_number`. |
+        | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Include resend lookup payload and retry. |
         | USER_NOT_FOUND | 404 | User not found by provided phone number | Verify `phone_number` and retry. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify the agreement id belongs to the merchant. |
         | RESEND_MAX_REACHED | 422 | Maximum resend attempts reached | Wait for reset window before retrying resend. |
+        | PAM_UNEXPECTED_ERROR | 500 | Unexpected resend processing error | Retry later and contact support if repeated. |
       requestBody:
         required: true
         content:
@@ -432,9 +451,15 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_REQ_BODY_INVALID | 400 | Malformed amend payload | Validate JSON body and required amend fields. |
+        | PAM_AMEND_FORBIDDEN | 400 | Agreement status does not allow amend | Amend only active/paused eligible agreements. |
+        | PAM_AMEND_PENDING | 400 | Pending bilateral amend already exists | Wait for current amend to complete before retrying. |
+        | PAM_ACTION_INVALID | 400 | Invalid amend action/state transition | Correct status/action inputs and retry. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify the target agreement id or phone mapping. |
         | M101 | 422 | Requested amount exceeds hard threshold | Lower `maximum_amount` to an allowed value. |
         | M100 | 422 | Requested amount exceeds merchant limit | Increase merchant limit or lower the requested amount. |
+        | MOV_AMEND_STATUS_VALIDATION_FAILED | 400 | Amendment status validation failed | Ensure amend request fields are valid for current status. |
+        | MOV_MULTIPLE_FIELD_CHANGE_ERROR | 400 | Unsupported multiple-field amend with response time | Amend fewer fields per request and retry. |
       requestBody:
         required: true
         content:
@@ -505,7 +530,11 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_PAGID_REQUIRED | 400 | Agreement id is required | Provide `id` query parameter and retry. |
+        | PAM_PAGID_INVALID | 400 | Agreement id format is invalid | Correct agreement id format. |
+        | PAM_INVALID_OPERATION | 400 | Current agreement state cannot be cancelled | Ensure agreement is in cancellable state. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Check `id` and ensure it belongs to this merchant. |
+        | PAM_FORBIDDEN_ERROR | 403 | Merchant is not allowed to cancel this agreement | Verify merchant ownership/permissions. |
       parameters:
         - in: query
           name: id
@@ -550,8 +579,13 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_REQ_BODY_INVALID | 400 | Malformed one-time agreement payload | Validate body structure and field formats. |
+        | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Provide `payment_agreement` object with required fields. |
+        | PAM_PAYEE_MISSING | 400 | Payee details missing | Provide PayID or account-based details. |
+        | PAM_PAYEE_ID_INVALID | 400 | PayID format/type is invalid | Correct PayID value/type and retry. |
         | VALIDATION_ERROR | 422 | Invalid one-time agreement payload | Validate required fields and formats before retrying. |
         | PAM_NPP_GATEWAY_ERROR | 422 | Upstream processing error | Retry request; if repeated, contact support with request details. |
+        | PAM_NPP_GATEWAY_TIMEOUT | 408 | Upstream timeout | Retry with backoff and poll status. |
       requestBody:
         required: true
         content:
@@ -696,7 +730,11 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAS_PMTID_REQUIRED | 400 | `payment_initiation_id` is missing | Provide `id` query parameter and retry. |
+        | PAS_PMT_UID_INVALID | 400 | Initiation id format is invalid | Correct initiation id format and retry. |
         | PAYMENT_INITIATION_NOT_FOUND | 404 | Payment initiation not found | Verify the `id` belongs to this merchant and retry. |
+        | PAS_INSTRUCTION_NOT_FOUND | 404 | Payment instruction record not found | Verify initiation id and processing state. |
+        | PAS_PAM_TIMEOUT_ERROR | 500 | Timeout while calling agreement service | Retry later and contact support if persistent. |
       parameters:
         - in: query
           name: id
@@ -772,14 +810,25 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAS_REQ_BODY_INVALID | 400 | Malformed request body | Validate JSON payload and required fields. |
+        | PAS_REQUEST_EMPTY | 400 | Request payload is empty | Provide `payment_initiation` payload and retry. |
+        | PAS_PAGID_REQUIRED | 400 | `payment_agreement_id` is required | Include a valid agreement id. |
+        | PAS_AMT_REQUIRED | 400 | `amount` is required | Provide amount in the request payload. |
+        | PAS_AMT_INVALID | 400 | Amount format is invalid | Provide a numeric amount with valid precision. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify `payment_agreement_id` and merchant ownership. |
         | PAS_AGREEMENT_STATUS_INACTIVE | 422 | Agreement is not active | Activate agreement before initiating payment. |
+        | PAS_AGREEMENT_ENDED | 400 | Agreement end date has passed | Use a valid active agreement. |
+        | PAS_AGREEMENT_NOT_STARTED | 400 | Agreement start date is in future | Retry after agreement start date. |
+        | PAS_PAYMENT_TOO_SOON | 400 | Execution window/cooldown not met | Wait and retry after the cooldown window. |
+        | PAS_MAX_AMT_EXCEEDED | 400 | Amount exceeds agreement max amount | Lower amount or amend agreement limits. |
         | R804 | 422 | Duplicate/too-soon payment initiation detected | Wait for cooldown window and retry once eligible. |
         | R101 | 422 | Amount exceeds per-transaction/agreement limit | Reduce `amount` to allowed limit. |
         | R102 | 422 | Daily spend limit exceeded | Retry next cycle or reduce amount. |
         | R100 | 422 | Daily transaction count limit exceeded | Retry next day or after account review. |
         | R103 | 422 | Destination payout not allowed for merchant settings | Enable eligible payout settings or remove destination. |
         | R803 | 422 | Upstream initiation failed | Retry; if persistent, contact support with request metadata. |
+        | PAS_NPP_GATEWAY_ERROR | 502 | Provider gateway returned an error | Retry with backoff; contact support if repeated. |
+        | PAS_NPP_GATEWAY_TIMEOUT | 504 | Provider gateway timeout | Retry request and check status afterwards. |
         | R805 | 200 | Upstream timeout with accepted processing state | Poll status using get endpoint until terminal state. |
         | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
       requestBody:
@@ -925,6 +974,10 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAS_REQ_BODY_INVALID | 400 | Malformed direct debit payload | Validate body structure and required fields. |
+        | PAS_REQUEST_EMPTY | 400 | Request payload is empty | Provide `direct_debit` payload and retry. |
+        | PAS_AMT_REQUIRED | 400 | Amount is required | Include `amount` in direct debit payload. |
+        | PAS_AMT_INVALID | 400 | Amount format is invalid | Use a valid numeric amount format. |
         | R104 | 422 | Consent is missing or invalid | Set `consent_received` to `"true"` and retry. |
         | R101 | 422 | Amount exceeds allowed threshold | Reduce `amount` and retry. |
         | R801 | 422 | Similar debit attempted within cooldown period | Wait for cooldown window and retry. |
@@ -932,6 +985,9 @@ paths:
         | R100 | 422 | Daily transaction count exceeded | Retry next day or after account review. |
         | R103 | 422 | Destination payout not enabled | Update merchant payout settings or remove destination. |
         | R803 | 422 | Direct debit initiation failed upstream | Retry; if repeated, contact support with request details. |
+        | MOV_INVALID_BANK_ACCOUNT | 400 | Bank account does not belong to current institution | Correct payer account details and retry. |
+        | MOV_INVALID_BSB | 400 | Invalid BSB number | Provide valid 6-digit BSB and retry. |
+        | MOV_REQUEST_TIMEOUT | 408 | Request timed out | Retry after a short delay. |
       requestBody:
         required: true
         content:
