@@ -69,15 +69,8 @@ paths:
         | AUTH_001 | 401 | Invalid API key | Verify the API key and retry with the correct credential. |
         | AUTH_002 | 401 | Merchant account is not active | Activate the merchant account before requesting a token. |
         | AUTH_003 | 408 | Upstream timeout | Retry with backoff; if persistent, contact support with request timestamp. |
-      security: []
-      parameters:
-        - in: header
-          name: Authorization
-          required: true
-          description: Merchant API key (raw value or `Bearer <api_key>`).
-          schema:
-            type: string
-          example: sk_test_your_merchant_api_key
+      security:
+        - ApiKeyAuth: []
       responses:
         '200':
           description: Token issued
