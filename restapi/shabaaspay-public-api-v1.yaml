@@ -214,17 +214,37 @@ paths:
                     pay_id: sample@shabaas.com
       responses:
         '200':
-          description: Payment agreement created
+          description: Payment agreement created and submitted for payer authorization.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+              examples:
+                created:
+                  summary: Agreement created successfully
+                  value:
+                    message: Payment Agreement created successfully, Please authorized payment agreement from your banking app.
+                    data:
+                      payment_agreement_id: "3652PA20260428120000123"
+                      status: initiated
+                      end_date: "2026-12-31"
+                      created_at: "2026-04-28T12:00:00.000Z"
+                      maximum_amount: "500.00"
+                      extented_status: "500-WEEK-10-initiated"
         '401':
-          description: Unauthorized
+          description: Invalid or missing authorization context.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Authorization failed
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
         '402':
           description: Developer credits exhausted
           content:
@@ -239,19 +259,35 @@ paths:
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
         '404':
-          description: Related resource not found (specific flows)
+          description: Related resource not found in current merchant context.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                agreement_context_not_found:
+                  summary: Referenced entity not found
+                  value:
+                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
         '408':
-          description: Request timeout
+          description: Upstream provider timeout while processing agreement creation.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                timeout:
+                  summary: Upstream timeout
+                  value:
+                    message: Request Timeout
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
         '422':
-          description: Validation, or business error
+          description: Validation or business-rule failure for agreement creation.
           content:
             application/json:
               schema:
@@ -979,37 +1015,57 @@ components:
 
     PaymentAgreement:
       type: object
+      description: Payment agreement object returned by create/get agreement APIs.
       properties:
         payment_agreement_id:
           type: string
+          description: Unique agreement identifier. Use this value to retrieve, amend, resend, or cancel the agreement.
+          example: "3652PA20260428120000123"
         status:
           type: string
+          description: Current agreement state in the processing lifecycle.
+          example: initiated
         end_date:
           type: string
           format: date
+          description: Agreement end date when set; null/omitted when open-ended.
+          example: "2026-12-31"
         created_at:
           type: string
           format: date-time
+          description: Agreement creation timestamp in ISO8601 format.
+          example: "2026-04-28T12:00:00.000Z"
         maximum_amount:
           type: string
+          description: Maximum debit amount allowed per agreement.
+          example: "500.00"
         extented_status:
           type: string
+          description: Compact composite status string used by existing clients.
+          example: "500-WEEK-10-initiated"
         message:
           type: string
           description: Present when agreement has a failure message from scheme
+          example: Payee account cannot receive NPP Payments
         failure_code:
           type: string
+          description: Provider/business failure code when the agreement fails.
+          example: M100
 
     SuccessPaymentAgreementResponse:
       type: object
+      description: Standard success envelope for payment agreement APIs.
       properties:
         message:
           type: string
+          description: Message for the request response.
+          example: Payment Agreement created successfully, Please authorized payment agreement from your banking app.
         data:
           $ref: '#/components/schemas/PaymentAgreement'
 
     CreatePaymentAgreementRequest:
       type: object
+      description: Request payload used to create a recurring payment agreement for a payer.
       required:
         - name
         - type
@@ -1020,39 +1076,66 @@ components:
       properties:
         phone_number:
           type: string
+          description: Optional payer phone number. When provided, the payer profile is looked up/created against this number.
+          example: "+61422020901"
         name:
           type: string
+          minLength: 2
+          maxLength: 140
+          description: Payer display name used in agreement records and authorization flow.
+          example: John Smith
         type:
           type: string
-          description: Payee identifier type (for example email).
+          description: Identifier type for payer/payee details.
+          example: email
+          enum: [email, phone, bsb]
         maximum_amount:
           type: string
-          description: Maximum debit amount per agreement.
+          description: Maximum debit amount allowed per transaction under this agreement.
+          example: "500.00"
         frequency:
           type: string
           description: |
             Stored codes (after normalization): ADHO, DAIL, FRTN, INDA, MIAN, MNTH, QURT, WEEK, YEAR.
             Aliases before save: DAILY→DAIL, ADHOC→ADHO.
+          example: ADHO
+          enum: [ADHO, DAIL, FRTN, INDA, MIAN, MNTH, QURT, WEEK, YEAR, DAILY, ADHOC]
         number_of_transactions_permitted:
           type: integer
+          minimum: 1
+          maximum: 1000
+          description: Maximum number of debits permitted under this agreement.
+          example: 10
         pay_id:
           type: string
+          description: PayID used for payer authorization (for example email PayID or mobile PayID).
+          example: sample@shabaas.com
         bsb:
           oneOf:
             - type: string
             - type: integer
+          description: BSB value when bank-account based setup is used.
+          example: "123456"
         account_number:
           oneOf:
             - type: string
             - type: integer
+          description: Account number when bank-account based setup is used.
+          example: "987654321"
         agreement_type:
           type: string
+          description: Agreement variation/type code used by downstream provider where applicable.
+          example: VARI
         start_date:
           type: string
           format: date
+          description: Optional agreement start date in `YYYY-MM-DD`.
+          example: "2026-05-01"
         end_date:
           type: string
           format: date
+          description: Optional agreement end date in `YYYY-MM-DD`. Leave empty for open-ended agreement.
+          example: "2026-12-31"
 
     ResendPaymentAgreementRequest:
       type: object
