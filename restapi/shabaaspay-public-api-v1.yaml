@@ -11,6 +11,9 @@ servers:
   - url: https://api.shabaas.com
     description: Production
 tags:
+  - name: Authentication
+    x-displayName: Authentication
+    description: Generate and manage bearer-token access for public API calls.
   - name: Payment Request
     x-displayName: Payment Request
     description: Create inbound payment requests and query their status.
@@ -48,13 +51,14 @@ x-tagGroups:
     tags:
       - API Keys
       - Webhooks
+      - Authentication
 security:
   - BearerAuth: []
 paths:
   /api/public/authorization:
     post:
-      tags: [API Keys, Clients]
-      summary: Exchange API key for bearer token
+      tags: [Authentication, API Keys]
+      summary: Generate Bearer Token
       description: |
         Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
         Send the merchant API key in `Authorization` (raw key or `Bearer <key>`).
@@ -66,6 +70,14 @@ paths:
         | AUTH_002 | 401 | Merchant account is not active | Activate the merchant account before requesting a token. |
         | AUTH_003 | 408 | Upstream timeout | Retry with backoff; if persistent, contact support with request timestamp. |
       security: []
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Merchant API key (raw value or `Bearer <api_key>`).
+          schema:
+            type: string
+          example: sk_test_your_merchant_api_key
       responses:
         '200':
           description: Token issued
@@ -498,6 +510,29 @@ paths:
                   type: string
                 invoice:
                   $ref: '#/components/schemas/GenerateInvoiceRequest'
+            examples:
+              basic_invoice:
+                summary: Minimal valid payload
+                value:
+                  uuid: merchant-checkout-username
+                  invoice:
+                    amount: "100.00"
+                    description: Monthly subscription
+              full_invoice:
+                summary: Full payload with optional fields
+                value:
+                  uuid: merchant-checkout-username
+                  phone_number: "+61422020901"
+                  invoice:
+                    amount: "249.95"
+                    description: Invoice INV-2026-001
+                    bill_to: John Citizen
+                    address: "10 George St, Sydney NSW 2000"
+                    receiver_abn: "12000000000"
+                    ref_no: INV-2026-001
+                    gst_included: false
+                    gst_does_not_apply: false
+                    email: john@example.com
       responses:
         '200':
           description: Invoice checkout URL generated
