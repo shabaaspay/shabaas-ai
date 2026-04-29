@@ -1047,19 +1047,42 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/WebhookUpsertRequest'
+            examples:
+              upsert_webhooks:
+                summary: Save all webhook endpoints
+                value:
+                  auth_key: whsec_7f9d2b84c1f2
+                  payment_agreement: https://staging.abc.co/payment_agreement
+                  payment_initiation: https://staging.abc.co/payment_initiation
+                  direct_debit_accepted: https://staging.abc.co/direct_debit_accepted
+                  direct_debit_rejected: https://staging.abc.co/direct_debit_rejected
       responses:
         '200':
-          description: Webhook saved
+          description: Webhook endpoints saved successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              examples:
+                saved:
+                  summary: Webhook configuration saved
+                  value:
+                    message: Webhook saved successfully
+                    data: {}
         '422':
-          description: Invalid webhook payload
+          description: Invalid webhook payload (missing fields or invalid URLs).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_payload:
+                  summary: Invalid webhook body
+                  value:
+                    message: Validation failed
+                    error_code: VALIDATION_ERROR
+                    data:
+                      response_time: "2026-04-29T08:00:00.000Z"
     get:
       tags: [Webhooks]
       summary: Get webhook endpoints
@@ -1072,7 +1095,7 @@ paths:
         | WEBHOOK_NOT_FOUND | 404 | No webhook configuration exists for this merchant | Configure webhooks first using create/update endpoint. |
       responses:
         '200':
-          description: Webhook configuration returned
+          description: Webhook configuration returned successfully.
           content:
             application/json:
               schema:
@@ -1083,12 +1106,30 @@ paths:
                     example: Success
                   data:
                     $ref: '#/components/schemas/WebhookConfig'
+              examples:
+                configured:
+                  summary: Existing webhook settings
+                  value:
+                    message: Success
+                    data:
+                      payment_agreement: https://staging.abc.co/payment_agreement
+                      payment_initiation: https://staging.abc.co/payment_initiation
+                      direct_debit_accepted: https://staging.abc.co/direct_debit_accepted
+                      direct_debit_rejected: https://staging.abc.co/direct_debit_rejected
         '404':
-          description: Webhook not found
+          description: No webhook configuration exists for this merchant.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  summary: Webhook configuration missing
+                  value:
+                    message: Webhook not found
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-29T08:00:00.000Z"
 
   /api/v1/collections/payid:
     post:
@@ -1655,6 +1696,7 @@ components:
 
     WebhookUpsertRequest:
       type: object
+      description: Request payload to create or update merchant webhook endpoints.
       required:
         - auth_key
         - payment_agreement
@@ -1664,34 +1706,55 @@ components:
       properties:
         auth_key:
           type: string
+          description: Shared secret value sent with webhook requests for receiver-side verification.
+          minLength: 8
+          maxLength: 200
+          example: whsec_7f9d2b84c1f2
         payment_agreement:
           type: string
           format: uri
+          description: HTTPS endpoint that receives payment agreement status callbacks.
+          example: https://staging.abc.co/payment_agreement
         payment_initiation:
           type: string
           format: uri
+          description: HTTPS endpoint that receives payment initiation callbacks.
+          example: https://staging.abc.co/payment_initiation
         direct_debit_accepted:
           type: string
           format: uri
+          description: HTTPS endpoint invoked when direct debit is accepted.
+          example: https://staging.abc.co/direct_debit_accepted
         direct_debit_rejected:
           type: string
           format: uri
+          description: HTTPS endpoint invoked when direct debit is rejected/dishonoured.
+          example: https://staging.abc.co/direct_debit_rejected
 
     WebhookConfig:
       type: object
+      description: Stored webhook endpoint configuration for the authenticated merchant.
       properties:
         payment_agreement:
           type: string
           format: uri
+          description: Configured payment agreement callback endpoint.
+          example: https://staging.abc.co/payment_agreement
         payment_initiation:
           type: string
           format: uri
+          description: Configured payment initiation callback endpoint.
+          example: https://staging.abc.co/payment_initiation
         direct_debit_accepted:
           type: string
           format: uri
+          description: Configured direct debit accepted callback endpoint.
+          example: https://staging.abc.co/direct_debit_accepted
         direct_debit_rejected:
           type: string
           format: uri
+          description: Configured direct debit rejected callback endpoint.
+          example: https://staging.abc.co/direct_debit_rejected
 
     CreatePayIdCollectionRequest:
       type: object
