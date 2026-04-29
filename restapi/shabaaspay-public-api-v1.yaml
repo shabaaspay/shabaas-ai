@@ -29,9 +29,6 @@ tags:
   - name: Webhooks
     x-displayName: Webhooks
     description: Configure notification endpoints for agreement and payment events.
-  - name: Authentication
-    x-displayName: Authentication
-    description: Generate and manage bearer-token access for public API calls.
   - name: Clients
     x-displayName: Clients
     description: Merchant-level access and account configuration endpoints.
@@ -46,14 +43,13 @@ x-tagGroups:
       - Webhooks
   - name: Internal
     tags:
-      - Authentication
       - Clients
 security:
   - BearerAuth: []
 paths:
   /api/public/authorization:
     post:
-      tags: [Authentication, API Keys]
+      tags: [API Keys]
       summary: Generate Bearer Token
       description: |
         Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
