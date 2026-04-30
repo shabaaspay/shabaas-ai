@@ -369,6 +369,153 @@ paths:
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
 
+  /api/public/payment_initiation/direct_debit:
+    post:
+      tags: [Payment Initiations]
+      x-mcp-tool: initiate_direct_debit
+      summary: Initiate direct debit payment
+      description: Used by MCP tool `initiate_direct_debit`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [direct_debit]
+              properties:
+                direct_debit:
+                  $ref: '#/components/schemas/DirectDebitInitiationRequest'
+                destination:
+                  $ref: '#/components/schemas/DestinationAccount'
+            examples:
+              minimal:
+                value:
+                  direct_debit:
+                    name: John Citizen
+                    amount: "10.00"
+                    consent_received: true
+                    bsb: "062000"
+                    account_number: "12345678"
+      responses:
+        '200':
+          description: Direct debit initiation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or business-rule error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_agreement/bilateral:
+    patch:
+      tags: [Payment Agreements]
+      x-mcp-tool: update_bilateral_agreement
+      summary: Bilateral amend payment agreement
+      description: Used by MCP tool `update_bilateral_agreement`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                payment_agreement:
+                  $ref: '#/components/schemas/BilateralAmendPaymentAgreementRequest'
+            examples:
+              by_id:
+                value:
+                  payment_agreement:
+                    id: "3652PA20260408123221550"
+                    maximum_amount: "500"
+                    frequency: WEEK
+                    number_of_transactions_permitted: 10
+      responses:
+        '200':
+          description: Bilateral amendment submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or business-rule error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/generate_invoice:
+    post:
+      tags: [Payment Agreements]
+      x-mcp-tool: generate_invoice
+      summary: Generate invoice checkout URL
+      description: Used by MCP tool `generate_invoice`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uuid, invoice]
+              properties:
+                uuid:
+                  type: string
+                  description: Merchant checkout username or merchant secret.
+                phone_number:
+                  type: string
+                invoice:
+                  $ref: '#/components/schemas/GenerateInvoiceRequest'
+      responses:
+        '200':
+          description: Invoice checkout URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      checkout_url:
+                        type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -543,3 +690,80 @@ components:
         description:
           type: string
           description: Not stored by the API; use `notes`. Some clients map this to `notes`.
+
+    DirectDebitInitiationRequest:
+      type: object
+      required: [name, amount, consent_received, bsb, account_number]
+      properties:
+        name:
+          type: string
+        amount:
+          oneOf:
+            - type: number
+            - type: string
+        consent_received:
+          oneOf:
+            - type: boolean
+            - type: string
+          description: Must be true / "true".
+        bsb:
+          oneOf:
+            - type: string
+            - type: integer
+        account_number:
+          oneOf:
+            - type: string
+            - type: integer
+        phone_number:
+          type: string
+        notes:
+          type: string
+
+    BilateralAmendPaymentAgreementRequest:
+      type: object
+      required: [maximum_amount, frequency, number_of_transactions_permitted]
+      properties:
+        id:
+          type: string
+        phone_number:
+          type: string
+        maximum_amount:
+          oneOf:
+            - type: string
+            - type: number
+        frequency:
+          type: string
+        agreement_type:
+          type: string
+        number_of_transactions_permitted:
+          type: integer
+
+    GenerateInvoiceRequest:
+      type: object
+      required: [amount, description]
+      properties:
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+        description:
+          type: string
+        bill_to:
+          type: string
+        address:
+          type: string
+        receiver_abn:
+          type: string
+        ref_no:
+          type: string
+        gst_included:
+          type: boolean
+        gst_does_not_apply:
+          type: boolean
+        email:
+          type: string
+
+    DestinationAccount:
+      type: object
+      additionalProperties: true
+      description: Optional destination payload used by direct debit flow.
