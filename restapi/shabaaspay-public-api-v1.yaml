@@ -103,17 +103,15 @@ paths:
       tags: [Payment Agreement]
       summary: Get payment agreement
       description: |
-        Retrieve a payment agreement by `id` (payment_agreement_id).
+        Retrieve a payment agreement by query parameter `id` (`payment_agreement_id`).
 
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAM_PAGID_REQUIRED | 400 | `payment_agreement_id` is missing | Provide a valid agreement id in query params. |
-        | PAM_PAGID_INVALID | 400 | Agreement id format is invalid | Correct the id format and retry. |
-        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found for this merchant | Confirm the `id` and ensure it belongs to the authenticated merchant. |
-        | PAM_FORBIDDEN_ERROR | 403 | Merchant is not allowed to access this agreement | Verify merchant/account permissions. |
-        | PAM_MAPPING_ERROR | 500 | Internal mapping error while resolving agreement | Retry later; contact support if repeated. |
-        | PAM_NPP_GATEWAY_TIMEOUT | 408 | Upstream timeout | Retry with backoff; if still failing, contact support. |
+        | GN-0000 | 401 | Missing `Authorization`, unknown merchant for token `jti`, or inactive merchant | Send a valid bearer token from `/api/public/authorization`; ensure the merchant account is active. |
+        | GN-0000 | 403 | Bearer token cannot be decoded (malformed JWT, bad signature, etc.) | Fix `Authorization: Bearer <jwt>`; obtain a new token if needed. |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Agreement not found for this merchant (includes missing `id`) | Confirm `id` and merchant ownership. |
+        | PAM_NPP_GATEWAY_TIMEOUT | 408 | Upstream timeout | Retry with backoff; contact support if persistent. |
       parameters:
         - in: query
           name: id
@@ -141,32 +139,68 @@ paths:
                       maximum_amount: "500.00"
                       extented_status: "500-WEEK-10-active"
         '401':
-          description: Invalid or missing bearer token.
+          description: Missing or invalid bearer session after decode (no header, unknown `jti`, or inactive merchant).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                unauthorized:
-                  summary: Authorization failed
+                missing_authorization:
+                  summary: No Authorization header
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
+                unknown_merchant:
+                  summary: Token decoded but merchant not found for jti
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
+                account_inactive:
+                  summary: Merchant account not activated
+                  value:
+                    message: Account not activated yet
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
+        '403':
+          description: Bearer token could not be decoded (`JWT::DecodeError`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_jwt:
+                  summary: Malformed or invalid JWT
                   value:
                     message: Unauthorized Access to an operation
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-28T12:00:00.000Z"
         '404':
-          description: Agreement id not found for this merchant.
+          description: No agreement found (`PAM_SB_PAG_NOT_FOUND_ERROR`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                not_found:
+                unknown_or_wrong_id:
+                  summary: Unknown payment_agreement_id or wrong merchant
                   value:
-                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
-                    error_code: GN-0000
+                    message: PaymentAgreement not found for PaymentAgreementUID
+                    error_code: PAM_SB_PAG_NOT_FOUND_ERROR
                     data:
-                      response_time: "2026-04-10T12:00:00.000Z"
+                      response_time: "2026-04-28T12:00:00.000Z"
+                missing_id:
+                  summary: id query parameter omitted
+                  value:
+                    message: PaymentAgreement not found for PaymentAgreementUID
+                    error_code: PAM_SB_PAG_NOT_FOUND_ERROR
+                    data:
+                      response_time: "2026-04-28T12:00:00.000Z"
         '408':
           description: Upstream timeout while fetching agreement status.
           content:
@@ -190,6 +224,7 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
+        | PAM_PAYER_ID_TYPE_FORBIDDEN | 400 | Upstream rejects payer link fields — e.g. `linkedPayIdType` without `linkedPayId` (often `type: email` but missing `pay_id`) | Include `pay_id` for email/phone payee types, or full BSB/account for `type: bsb`, plus required fields (`name`, `maximum_amount`, etc.). |
         | PAM_REQ_BODY_INVALID | 400 | Malformed request body | Validate JSON payload structure and field types. |
         | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Send `payment_agreement` object with required fields. |
         | PAM_VALIDATION_ERROR | 400 | Request validation failed | Correct invalid/missing fields and retry. |
@@ -267,6 +302,22 @@ paths:
                       created_at: "2026-04-28T12:00:00.000Z"
                       maximum_amount: "500.00"
                       extented_status: "500-WEEK-10-initiated"
+        '400':
+          description: |
+            PayTo / payer validation error returned by the upstream provider (mapped under `monoova_error_codes`).
+            Common when required payer fields are missing — for example `type: email` without `pay_id`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                payer_id_type_without_linked_pay_id:
+                  summary: linkedPayIdType without linkedPayId (e.g. only type + frequency)
+                  value:
+                    message: ".linkedPayIdType prohibited without linkedPayId"
+                    error_code: PAM_PAYER_ID_TYPE_FORBIDDEN
+                    data:
+                      response_time: "2026-05-04T10:52:05.218Z"
         '401':
           description: Invalid or missing authorization context.
           content:
