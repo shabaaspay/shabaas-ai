@@ -225,6 +225,7 @@ paths:
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
         | PAM_PAYER_ID_TYPE_FORBIDDEN | 400 | Upstream rejects payer link fields — e.g. `linkedPayIdType` without `linkedPayId` (often `type: email` but missing `pay_id`) | Include `pay_id` for email/phone payee types, or full BSB/account for `type: bsb`, plus required fields (`name`, `maximum_amount`, etc.). |
+        | PAM_PAYER_BSB_REQUIRED | 400 | Payer BSB required when not using a PayID (`linkedBsb` when there is no `linkedPayId`) — e.g. `type: bsb` but `bsb` / `account_number` missing, or a PayID value sent instead of bank details | Use `bsb` + `account_number` for bank payers, or switch to `type: email` / phone with `pay_id` for PayID. |
         | PAM_REQ_BODY_INVALID | 400 | Malformed request body | Validate JSON payload structure and field types. |
         | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Send `payment_agreement` object with required fields. |
         | PAM_VALIDATION_ERROR | 400 | Request validation failed | Correct invalid/missing fields and retry. |
@@ -305,7 +306,7 @@ paths:
         '400':
           description: |
             PayTo / payer validation error returned by the upstream provider (mapped under `monoova_error_codes`).
-            Common when required payer fields are missing — for example `type: email` without `pay_id`.
+            Examples: missing `pay_id` for email/phone type, or missing bank details for `type: bsb`.
           content:
             application/json:
               schema:
@@ -318,6 +319,13 @@ paths:
                     error_code: PAM_PAYER_ID_TYPE_FORBIDDEN
                     data:
                       response_time: "2026-05-04T10:52:05.218Z"
+                payer_bsb_required:
+                  summary: type bsb without bsb/account (e.g. pay_id used like email)
+                  value:
+                    message: ".linkedBsb required if no linkedPayId"
+                    error_code: PAM_PAYER_BSB_REQUIRED
+                    data:
+                      response_time: "2026-05-04T11:10:56.372Z"
         '401':
           description: Invalid or missing authorization context.
           content:
