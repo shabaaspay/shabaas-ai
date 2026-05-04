@@ -84,22 +84,72 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Payment agreement not found
+          description: |
+            Missing or invalid bearer session: no `Authorization` header, unknown merchant for token `jti`,
+            or merchant account not active.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                not_found:
+                missing_authorization:
+                  summary: No Authorization header
                   value:
-                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    message: Unauthorized Access to an operation
                     error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                unknown_merchant:
+                  summary: Token valid but merchant not found for jti
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                account_inactive:
+                  summary: Merchant not activated
+                  value:
+                    message: Account not activated yet
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '403':
+          description: |
+            Bearer token could not be decoded (malformed JWT, bad signature, wrong algorithm, etc.).
+            Distinct from 401, which is used for missing header or merchant/session checks after a successful decode.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_jwt:
+                  summary: Malformed or invalid JWT
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '404':
+          description: |
+            No payment agreement found for the lookup (unknown id, id not owned by merchant, or missing `id`).
+            Response uses `PAM_SB_PAG_NOT_FOUND_ERROR`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unknown_or_wrong_id:
+                  summary: Unknown payment_agreement_id (or wrong merchant)
+                  value:
+                    message: PaymentAgreement not found for PaymentAgreementUID
+                    error_code: PAM_SB_PAG_NOT_FOUND_ERROR
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+                missing_id:
+                  summary: id query parameter omitted
+                  value:
+                    message: PaymentAgreement not found for PaymentAgreementUID
+                    error_code: PAM_SB_PAG_NOT_FOUND_ERROR
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
         '408':
