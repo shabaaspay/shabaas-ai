@@ -415,12 +415,12 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAM_REQ_BODY_INVALID | 400 | Malformed resend payload | Send `payment_agreement.id` or `payment_agreement.phone_number`. |
-        | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Include resend lookup payload and retry. |
-        | USER_NOT_FOUND | 404 | User not found by provided phone number | Verify `phone_number` and retry. |
-        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify the agreement id belongs to the merchant. |
-        | RESEND_MAX_REACHED | 422 | Maximum resend attempts reached | Wait for reset window before retrying resend. |
-        | PAM_UNEXPECTED_ERROR | 500 | Unexpected resend processing error | Retry later and contact support if repeated. |
+        | GN-0000 | 422 | Missing or empty `payment_agreement` (Rails) | Send JSON `{"payment_agreement":{"id":"..."}}` or `{"payment_agreement":{"phone_number":"..."}}`. |
+        | PA-0001 | 422 | Maximum resend attempts in the rolling window | Wait (e.g. 24h) before calling resend again. |
+        | GN-0000 | 404 | No user for `phone_number` (phone path) | Verify `phone_number` format and user exists. |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Agreement `id` not found or not owned by merchant | Verify `id` and merchant. |
+        | (Monoova `PAM_*`) | 400 | Upstream rejected payer/payee payload on resend | Fix payer bank/PayID data; see create-agreement payer fields. |
+        | PAM_UNEXPECTED_ERROR | 500 | Unexpected resend processing error | Retry later; contact support if repeated. |
       requestBody:
         required: true
         content:
@@ -479,16 +479,25 @@ paths:
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
         '422':
-          description: Resend blocked by business validation rules.
+          description: |
+            Missing JSON wrapper, or resend rate limit (`ERRORCODE-resend_max_reached` → **PA-0001** in the API).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                resend_limit:
+                missing_payment_agreement_param:
+                  summary: Body without `payment_agreement` (or empty)
                   value:
-                    message: Maximum resend attempts reached
-                    error_code: RESEND_MAX_REACHED
+                    message: "param is missing or the value is empty: payment_agreement"
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-05-04T11:20:29.982Z"
+                resend_limit:
+                  summary: Too many resend calls in the window
+                  value:
+                    message: Maximum limit has been reached. Please retry after 24 hours
+                    error_code: PA-0001
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
 
@@ -581,8 +590,6 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAM_PAGID_REQUIRED | 400 | Agreement id is required | Provide `id` query parameter and retry. |
-        | PAM_PAGID_INVALID | 400 | Agreement id format is invalid | Correct agreement id format. |
         | PAM_INVALID_OPERATION | 400 | Current agreement state cannot be cancelled | Ensure agreement is in cancellable state. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Check `id` and ensure it belongs to this merchant. |
         | PAM_FORBIDDEN_ERROR | 403 | Merchant is not allowed to cancel this agreement | Verify merchant ownership/permissions. |
@@ -781,10 +788,7 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAS_PMTID_REQUIRED | 400 | `payment_initiation_id` is missing | Provide `id` query parameter and retry. |
-        | PAS_PMT_UID_INVALID | 400 | Initiation id format is invalid | Correct initiation id format and retry. |
-        | PAYMENT_INITIATION_NOT_FOUND | 404 | Payment initiation not found | Verify the `id` belongs to this merchant and retry. |
-        | PAS_INSTRUCTION_NOT_FOUND | 404 | Payment instruction record not found | Verify initiation id and processing state. |
+        | GN-0000 | 404 | Payment initiation not found | Verify the `id` belongs to this merchant and retry. |
         | PAS_PAM_TIMEOUT_ERROR | 500 | Timeout while calling agreement service | Retry later and contact support if persistent. |
       parameters:
         - in: query
@@ -861,8 +865,7 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAS_REQ_BODY_INVALID | 400 | Malformed request body | Validate JSON payload and required fields. |
-        | PAS_REQUEST_EMPTY | 400 | Request payload is empty | Provide `payment_initiation` payload and retry. |
+        | GN-0000 | 400 | param is missing or the value is empty: payment_initiation | Provide `payment_initiation` payload and retry. |
         | PAS_PAGID_REQUIRED | 400 | `payment_agreement_id` is required | Include a valid agreement id. |
         | PAS_AMT_REQUIRED | 400 | `amount` is required | Provide amount in the request payload. |
         | PAS_AMT_INVALID | 400 | Amount format is invalid | Provide a numeric amount with valid precision. |
@@ -1025,8 +1028,6 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAS_REQ_BODY_INVALID | 400 | Malformed direct debit payload | Validate body structure and required fields. |
-        | PAS_REQUEST_EMPTY | 400 | Request payload is empty | Provide `direct_debit` payload and retry. |
         | PAS_AMT_REQUIRED | 400 | Amount is required | Include `amount` in direct debit payload. |
         | PAS_AMT_INVALID | 400 | Amount format is invalid | Use a valid numeric amount format. |
         | R104 | 422 | Consent is missing or invalid | Set `consent_received` to `"true"` and retry. |
