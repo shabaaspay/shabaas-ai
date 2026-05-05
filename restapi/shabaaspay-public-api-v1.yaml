@@ -58,9 +58,9 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | AUTH_001 | 401 | Invalid API key | Verify the API key and retry with the correct credential. |
-        | AUTH_002 | 401 | Merchant account is not active | Activate the merchant account before requesting a token. |
-        | AUTH_003 | 408 | Upstream timeout | Retry with backoff; if persistent, contact support with request timestamp. |
+        | GN-0000 | 401 | Invalid API key | Verify the API key and retry with the correct credential. |
+        | GN-0000 | 401 | Merchant account is not active | Activate the merchant account before requesting a token. |
+        | GN-0000 | 408 | Upstream timeout | Retry with backoff; if persistent, contact support with request timestamp. |
       security:
         - ApiKeyAuth: []
       responses:
