@@ -713,11 +713,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [uuid, invoice]
+              required: [merchant_identifier, invoice]
               properties:
-                uuid:
+                merchant_identifier:
                   type: string
-                  description: Merchant checkout username or merchant secret.
+                  description: Merchant identifier. Accepts `checkout_username` or `merchant_secret`.
                 phone_number:
                   type: string
                 invoice:
@@ -726,14 +726,14 @@ paths:
               basic_invoice:
                 summary: Minimal valid payload
                 value:
-                  uuid: merchant-checkout-username
+                  merchant_identifier: merchant-checkout-username
                   invoice:
                     amount: "100.00"
                     description: Monthly subscription
               full_invoice:
                 summary: Full payload with optional fields
                 value:
-                  uuid: merchant-checkout-username
+                  merchant_identifier: merchant-checkout-username
                   phone_number: "+61422020901"
                   invoice:
                     amount: "249.95"
