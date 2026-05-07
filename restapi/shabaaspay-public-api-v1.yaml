@@ -20,6 +20,9 @@ tags:
   - name: Payment Initiation
     x-displayName: Payment Initiation
     description: Create and retrieve payment initiations linked to active agreements.
+  - name: Checkout
+    x-displayName: Checkout
+    description: Generate checkout and pay links for web checkout flows.
   - name: Payment Agreement Request
     x-displayName: Payment Agreement Request
     description: Generate payer approval flows for agreement setup where applicable.
@@ -38,6 +41,7 @@ x-tagGroups:
       - API Keys
       - Payment Agreement
       - Payment Initiation
+      - Checkout
       - Payment Agreement Request
       - Payment Request
       - Webhooks
@@ -1080,6 +1084,173 @@ paths:
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
 
+  /api/get_url:
+    post:
+      tags: [Checkout]
+      summary: Get Checkout Link
+      description: |
+        Create an invoice checkout link for a specific amount.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | GN-0000 | 401 | Unauthorized Access to an operation | Send valid API key in `Authorization` header. |
+        | M101 | 422 | Amount exceeds platform/merchant threshold | Reduce amount and retry. |
+        | GN-0000 | 422 | Checkout is not supported for merchant | Enable standalone checkout for merchant. |
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutUrlRequest'
+            examples:
+              basic:
+                value:
+                  expiry_date: "12-11-2026"
+                  amount: "60"
+                  notes: "Invoice #1042"
+      responses:
+        '200':
+          description: Checkout link generated.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: https://checkout.shabaas.com/au/staging-demo-merchant/abc123slug
+        '401':
+          description: Unauthorized merchant context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or business-rule error while creating checkout link.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/get_business_pay_link:
+    post:
+      tags: [Checkout]
+      summary: Get Pay Link
+      description: |
+        Create a business PayID pay link for merchant checkout.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | GN-0000 | 401 | Unauthorized Access to an operation | Send valid API key in `Authorization` header |
+        | GN-0000 | 404 | Payment method not found | Configure merchant payment method first. |
+        | GN-0000 | 422 | Missing or invalid `pay_id` | Provide a valid `pay_id` (without `@`). |
+        | GN-0000 | 422 | PayID already exists | Use a different `pay_id` value. |
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessPayLinkRequest'
+            examples:
+              basic:
+                value:
+                  pay_id: "buss.fees"
+      responses:
+        '200':
+          description: Business PayID link created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessPayLinkResponse'
+              examples:
+                created:
+                  value:
+                    message: Business Payid created successfully
+                    data:
+                      business_payid: buss.fees@sbpay.au
+                      business_payid_name: buss.fees
+                      status: Enabled
+        '401':
+          description: Unauthorized merchant context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Merchant payment method missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or provider error while creating business pay link.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/get_external_url:
+    post:
+      tags: [Checkout]
+      summary: Checkout from external website
+      description: |
+        Generate an external checkout URL using amount, notes, and checkout parameters.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | GN-0000 | 401 | Unauthorized Access to an operation | Send valid API key in `Authorization` header |
+        | GN-0000 | 422 | Invalid amount (amount <= 0) | Provide a positive amount. |
+        | PA-0008 | 422 | Amount exceeds allowed threshold | Reduce amount and retry. |
+        | GN-0000 | 422 | Checkout is not supported for merchant | Enable standalone checkout for merchant. |
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCheckoutRequest'
+            examples:
+              basic:
+                value:
+                  amount: "50"
+                  notes: "testing"
+                  checkout:
+                    first_and_last_name: "Jon Doe"
+                    company_name: "Test Corp"
+                    business_abn: "111111111"
+                    email: "customer@example.com"
+                    phone_number: "6141012233"
+      responses:
+        '200':
+          description: External checkout URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutLinkResponse'
+              examples:
+                generated:
+                  value:
+                    message: Success
+                    data:
+                      checkout_url: https://checkout.shabaas.com/au/staging-demo-merchant?token=eyJhbGci...
+        '401':
+          description: Unauthorized merchant context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or business-rule error while generating external checkout URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/public/webhooks:
     post:
       tags: [Webhooks]
@@ -1575,6 +1746,91 @@ components:
         email:
           type: string
           format: email
+
+    CheckoutUrlRequest:
+      type: object
+      required: [expiry_date, amount]
+      properties:
+        expiry_date:
+          type: string
+          description: Link expiry date as accepted by checkout API (for example `DD-MM-YYYY`).
+          example: "12-11-2026"
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+          description: Checkout amount.
+          example: "60"
+        notes:
+          type: string
+          description: Optional checkout notes.
+          example: Invoice #1042
+
+    BusinessPayLinkRequest:
+      type: object
+      required: [pay_id]
+      properties:
+        pay_id:
+          type: string
+          description: Requested business PayID alias (must not contain `@`).
+          example: buss.fees
+
+    BusinessPayLinkResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Business Payid created successfully
+        data:
+          type: object
+          properties:
+            business_payid:
+              type: string
+              example: buss.fees@sbpay.au
+            business_payid_name:
+              type: string
+              example: buss.fees
+            status:
+              type: string
+              example: Enabled
+
+    ExternalCheckoutRequest:
+      type: object
+      required: [amount, checkout]
+      properties:
+        amount:
+          oneOf:
+            - type: string
+            - type: number
+          description: External checkout amount.
+          example: "50"
+        notes:
+          type: string
+          description: Optional checkout notes.
+          example: testing
+        checkout:
+          type: object
+          description: External checkout parameter object.
+          additionalProperties: true
+          example:
+            first_and_last_name: Jon Doe
+            company_name: Test Corp
+            business_abn: "111111111"
+            email: customer@example.com
+            phone_number: "6141012233"
+
+    CheckoutLinkResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success
+        data:
+          type: object
+          properties:
+            checkout_url:
+              type: string
+              example: https://checkout.shabaas.com/au/staging-demo-merchant?token=eyJhbGci...
 
     DestinationAccount:
       type: object
