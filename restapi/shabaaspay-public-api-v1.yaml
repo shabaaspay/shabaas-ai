@@ -227,7 +227,7 @@ paths:
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
         | PAM_PAYER_ID_TYPE_FORBIDDEN | 400 | LinkedPayIdType prohibited without linkedPayID| Include `pay_id`|
-        | PAM_PAYER_BSB_REQUIRED | 400 | Payer BSB required when not using a PayID (`linkedBsb` when there is no `linkedPayId`) — e.g. `type: bsb` but `bsb` / `account_number` missing, or a PayID value sent instead of bank details | Use `bsb` + `account_number` for bank payers, or switch to `type: email` / phone with `pay_id` for PayID. |
+        | PAM_PAYER_BSB_REQUIRED | 400 | Payer BSB required when not using a PayID | Use `bsb` + `account_number` for bank payers, or switch to `type: email` / phone with `pay_id` for PayID. |
         | PAM_REQUEST_EMPTY | 400 | Request payload is empty | Send `payment_agreement` object with required fields. |
         | PAM_VALIDATION_ERROR | 400 | Request validation failed | Correct invalid/missing fields and retry. |
         | PAM_PAYEE_MISSING | 400 | Payee details are missing | Provide PayID or valid account details. |
@@ -861,8 +861,6 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | PAS_AMT_REQUIRED | 400 | `amount` is required | Provide amount in the request payload. |
-        | PAS_AMT_INVALID | 400 | Amount format is invalid | Provide a numeric amount with valid precision. |
         | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify `payment_agreement_id` and merchant ownership. |
         | PAS_AGREEMENT_STATUS_INACTIVE | 422 | Agreement is not active | Activate agreement before initiating payment. |
         | PAS_AGREEMENT_ENDED | 400 | Agreement end date has passed | Use a valid active agreement. |
@@ -1362,7 +1360,7 @@ paths:
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
-        | INVALID_AMOUNT | 422 | Amount is invalid or less than/equal to zero | Provide a positive amount and retry. |
+        | GN-0000 | 422 | Invalid amount | Provide valid amount. |
         | PAYMENT_METHOD_NOT_FOUND | 404 | Merchant payment method is missing | Configure merchant payment method before creating PayID. |
         | PAYID_ALREADY_EXISTS | 422 | Generated PayID already exists | Retry request to generate a new PayID. |
         | PAYID_CREATE_FAILED | 422 | Upstream PayID creation failed | Retry with valid details or contact support. |
@@ -1646,7 +1644,7 @@ components:
     CreateOneTimePaymentAgreementRequest:
       type: object
       description: Request payload used to create a one-time payment agreement flow.
-      required: [name, amount]
+      required: [name, amount, type, pay_id]
       properties:
         phone_number:
           type: string
@@ -1690,10 +1688,11 @@ components:
           type: string
           description: Identifier type hint for payer details.
           enum: [email, phone, bsb]
+          default: email
           example: email
         pay_id:
           type: string
-          description: Optional PayID value for payer authorization context.
+          description: Required PayID value for payer authorization context.
           example: sample@shabaas.com
         frequency:
           type: string
