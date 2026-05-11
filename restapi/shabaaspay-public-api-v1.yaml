@@ -108,7 +108,7 @@ paths:
   /api/public/payment_agreement:
     get:
       tags: [Payment Agreement]
-      summary: Get payment agreement
+      summary: Show Agreement Status
       description: |
         Retrieve a payment agreement by query parameter `id` (`payment_agreement_id`).
 
@@ -223,7 +223,7 @@ paths:
                       response_time: "2026-04-28T12:00:00.000Z"
     post:
       tags: [Payment Agreement]
-      summary: Create payment agreement
+      summary: Create PayTo Agreement
       description: |
         Create a PayTo payment agreement.
 
@@ -413,7 +413,7 @@ paths:
   /api/public/payment_agreement/resend:
     patch:
       tags: [Payment Agreement]
-      summary: Resend payment agreement authorization request
+      summary: Resend Agreement
       description: |
         Re-issue an agreement authorization request using agreement id or phone number.
 
@@ -509,7 +509,7 @@ paths:
   /api/public/payment_agreement/bilateral:
     patch:
       tags: [Payment Agreement]
-      summary: Bilateral amend payment agreement
+      summary: Bilateral Agreement
       description: |
         Submit bilateral amendment details for an existing payment agreement.
 
@@ -1197,7 +1197,7 @@ paths:
   /api/get_external_url:
     post:
       tags: [Checkout]
-      summary: Checkout from external website
+      summary: post
       description: |
         Generate an external checkout URL using amount, notes, and checkout parameters.
 
