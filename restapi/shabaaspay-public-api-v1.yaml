@@ -29,6 +29,9 @@ tags:
   - name: Payment Request
     x-displayName: Payment Request
     description: Create inbound payment requests and query their status.
+  - name: B2B PayID Collections
+    x-displayName: B2B PayID Collections
+    description: Create inbound PayID collections and retrieve their status for B2B payment flows.
   - name: Webhooks
     x-displayName: Webhooks
     description: Configure notification endpoints for agreement and payment events.
@@ -44,6 +47,7 @@ x-tagGroups:
       - Checkout
       - Payment Agreement Request
       - Payment Request
+      - B2B PayID Collections
       - Webhooks
   - name: Internal
     tags:
@@ -777,7 +781,7 @@ paths:
   /api/public/payment_initiation:
     get:
       tags: [Payment Initiation]
-      summary: Get payment initiation
+      summary: Show Payment Request Status
       description: |
         Retrieve a payment initiation by `id` (payment_initiation_id).
 
@@ -854,7 +858,7 @@ paths:
                       response_time: "2026-04-28T13:30:00.000Z"
     post:
       tags: [Payment Initiation]
-      summary: Initiate payment
+      summary: Initiate PayTo Payment Request
       description: |
         Initiate a payment against an active payment agreement.
 
@@ -1013,7 +1017,7 @@ paths:
   /api/public/payment_initiation/direct_debit:
     post:
       tags: [Payment Initiation]
-      summary: Initiate direct debit payment
+      summary: Initiate Direct Debit Payment Request
       description: |
         Create direct debit initiation and process settlement workflow.
 
@@ -1252,7 +1256,7 @@ paths:
   /api/public/webhooks:
     post:
       tags: [Webhooks]
-      summary: Create or update webhook endpoints
+      summary: Register Webhook
       description: |
         Create or update webhook callback endpoints for merchant event notifications.
 
@@ -1304,7 +1308,7 @@ paths:
                       response_time: "2026-04-29T08:00:00.000Z"
     get:
       tags: [Webhooks]
-      summary: Get webhook endpoints
+      summary: Get Webhook
       description: |
         Retrieve currently configured webhook endpoints for the merchant.
 
@@ -1352,8 +1356,8 @@ paths:
 
   /api/v1/collections/payid:
     post:
-      tags: [Payment Request]
-      summary: Create inbound PayID collection
+      tags: [B2B PayID Collections]
+      summary: Create Dynamic PayID Alias
       description: |
         Create a PayID collection request and return a generated PayID reference.
 
@@ -1394,8 +1398,8 @@ paths:
 
   /api/v1/collections/payid/status:
     get:
-      tags: [Payment Request]
-      summary: Get inbound PayID status
+      tags: [B2B PayID Collections]
+      summary: Verify PayID Payment Status by Exact Amount
       description: |
         Retrieve status for a previously created PayID collection.
 
