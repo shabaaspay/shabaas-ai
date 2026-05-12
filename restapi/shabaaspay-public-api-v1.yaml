@@ -310,7 +310,7 @@ paths:
                       extented_status: "500-WEEK-10-initiated"
         '400':
           description: |
-            PayTo / payer validation error returned by the upstream provider (mapped under `monoova_error_codes`).
+            PayTo / payer validation error returned by the upstream provider.
             Examples: missing `pay_id` for email/phone type, or missing bank details for `type: bsb`.
           content:
             application/json:
