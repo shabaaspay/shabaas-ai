@@ -23,9 +23,6 @@ tags:
   - name: Checkout
     x-displayName: Checkout
     description: Generate checkout and pay links for web checkout flows.
-  - name: Payment Agreement Request
-    x-displayName: Payment Agreement Request
-    description: Generate payer approval flows for agreement setup where applicable.
   - name: B2B PayID Collections
     x-displayName: B2B PayID Collections
     description: Create inbound PayID collections and retrieve their status for B2B payment flows.
@@ -42,7 +39,6 @@ x-tagGroups:
       - Payment Agreement
       - Payment Initiation
       - Checkout
-      - Payment Agreement Request
       - B2B PayID Collections
       - Webhooks
   - name: Internal
@@ -630,7 +626,7 @@ paths:
 
   /api/public/payment_agreement/one_time:
     post:
-      tags: [Payment Agreement Request, Payment Agreement]
+      tags: [Payment Agreement]
       summary: Create one-time payment agreement
       description: |
         Create a one-time payment agreement flow linked to checkout.
