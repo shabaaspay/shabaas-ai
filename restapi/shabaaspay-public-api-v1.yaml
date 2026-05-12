@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Describes public REST endpoints for authorization, payment agreements, payment initiations,
-    webhooks, invoice generation, and PayID collection APIs.
+    webhooks, and PayID collection APIs.
 servers:
   - url: https://dev-api.shabaas.com
     description: Staging
@@ -26,9 +26,6 @@ tags:
   - name: Payment Agreement Request
     x-displayName: Payment Agreement Request
     description: Generate payer approval flows for agreement setup where applicable.
-  - name: Payment Request
-    x-displayName: Payment Request
-    description: Create inbound payment requests and query their status.
   - name: B2B PayID Collections
     x-displayName: B2B PayID Collections
     description: Create inbound PayID collections and retrieve their status for B2B payment flows.
@@ -46,7 +43,6 @@ x-tagGroups:
       - Payment Initiation
       - Checkout
       - Payment Agreement Request
-      - Payment Request
       - B2B PayID Collections
       - Webhooks
   - name: Internal
@@ -697,86 +693,6 @@ paths:
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-28T13:15:00.000Z"
-
-  /api/public/generate_invoice:
-    post:
-      tags: [Payment Request]
-      summary: Generate invoice checkout URL
-      description: |
-        Generate a checkout URL for invoice collection flow.
-
-        ### Error Codes
-        | Code | Status | Reason | What to do |
-        | ---- | ------ | ------ | ---------- |
-        | GN-0000 | 401 | Unauthorized Access to an operation | Verify merchant checkout username or merchant secret. |
-        | PA-0008 | 422 | Invoice amount exceeds allowed threshold | Reduce invoice amount and retry. |
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [merchant_identifier, invoice]
-              properties:
-                merchant_identifier:
-                  type: string
-                  description: Merchant identifier. Accepts `checkout_username` or `merchant_secret`.
-                phone_number:
-                  type: string
-                invoice:
-                  $ref: '#/components/schemas/GenerateInvoiceRequest'
-            examples:
-              basic_invoice:
-                summary: Minimal valid payload
-                value:
-                  merchant_identifier: merchant-checkout-username
-                  invoice:
-                    amount: "100.00"
-                    description: Monthly subscription
-              full_invoice:
-                summary: Full payload with optional fields
-                value:
-                  merchant_identifier: merchant-checkout-username
-                  phone_number: "+61422020901"
-                  invoice:
-                    amount: "249.95"
-                    description: Invoice INV-2026-001
-                    bill_to: John Citizen
-                    address: "10 George St, Sydney NSW 2000"
-                    receiver_abn: "12000000000"
-                    ref_no: INV-2026-001
-                    gst_included: false
-                    gst_does_not_apply: false
-                    email: john@example.com
-      responses:
-        '200':
-          description: Invoice checkout URL generated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Success
-                  data:
-                    type: object
-                    properties:
-                      checkout_url:
-                        type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/payment_initiation:
     get:
@@ -1723,32 +1639,6 @@ components:
           format: date
           description: Optional agreement end date in `YYYY-MM-DD`.
           example: "2026-05-31"
-
-    GenerateInvoiceRequest:
-      type: object
-      required: [amount]
-      properties:
-        amount:
-          oneOf:
-            - type: string
-            - type: number
-        description:
-          type: string
-        bill_to:
-          type: string
-        address:
-          type: string
-        receiver_abn:
-          type: string
-        ref_no:
-          type: string
-        gst_included:
-          type: boolean
-        gst_does_not_apply:
-          type: boolean
-        email:
-          type: string
-          format: email
 
     CheckoutUrlRequest:
       type: object
