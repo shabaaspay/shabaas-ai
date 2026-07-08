@@ -1488,7 +1488,7 @@ components:
           type: string
           description: |
             Optional. Overall collection cap for the agreement (cumulative amount that may be collected across all payment initiations).
-            When provided, it must be greater than or equal to `maximum_amount`. Once this total is reached, further payment initiations are rejected and the agreement is closed.
+            When provided, it must be greater than or equal to `maximum_amount`. Once this total is reached, further payment initiations are rejected.
             Leave empty for no overall cap.
           example: "2000.00"
         frequency:
