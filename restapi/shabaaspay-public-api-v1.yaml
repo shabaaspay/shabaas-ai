@@ -258,6 +258,7 @@ paths:
                     name: John Smith
                     type: email
                     maximum_amount: "500"
+                    maximum_overall_allowed_amount: "2000"
                     frequency: ADHO
                     number_of_transactions_permitted: 10
                     pay_id: sample@shabaas.com
@@ -1424,6 +1425,11 @@ components:
           type: string
           description: Maximum debit amount allowed per agreement.
           example: "500.00"
+        maximum_overall_allowed_amount:
+          type: string
+          description: |
+            Overall collection cap for the agreement when set (cumulative amount across all payment initiations).
+          example: "2000.00"
         extented_status:
           type: string
           description: Compact composite status string used by existing clients.
@@ -1478,6 +1484,13 @@ components:
           type: string
           description: Maximum debit amount allowed per transaction under this agreement.
           example: "500.00"
+        maximum_overall_allowed_amount:
+          type: string
+          description: |
+            Optional. Overall collection cap for the agreement (cumulative amount that may be collected across all payment initiations).
+            When provided, it must be greater than or equal to `maximum_amount`. Once this total is reached, further payment initiations are rejected and the agreement is closed.
+            Leave empty for no overall cap.
+          example: "2000.00"
         frequency:
           type: string
           description: |
