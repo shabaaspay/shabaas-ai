@@ -1912,22 +1912,13 @@ components:
       type: object
       description: |
         Bookkeeper request body for `POST /api/public/payment_initiation`.
-        `split_percentage_fee` enables ledger retain for end-of-day transfer.
+        Send `split_percentage_fee` inside `payment_initiation` to retain a share on the ledger for EOD.
       required: [payment_initiation]
       properties:
         payment_initiation:
           $ref: '#/components/schemas/CreateBookkeeperPaymentInitiationRequest'
         destination:
           $ref: '#/components/schemas/DestinationAccount'
-        split_percentage_fee:
-          oneOf:
-            - type: number
-            - type: string
-          description: |
-            Optional retain percentage (e.g. `20` or `"20%"`).
-            May also be sent inside `payment_initiation`.
-            For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
-          example: 20
 
     CreateBookkeeperPaymentInitiationRequest:
       type: object
@@ -1956,6 +1947,7 @@ components:
           description: |
             Optional retain percentage (e.g. `20` or `"20%"`).
             Must be greater than 0 and less than 100 when provided.
+            For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
           example: 20
 
     CreatePaymentInitiationBody:
