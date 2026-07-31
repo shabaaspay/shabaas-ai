@@ -19,17 +19,15 @@ tags:
     description: Create, retrieve, amend, resend, and cancel PayTo payment agreements.
   - name: Payment Initiation
     x-displayName: Payment Initiation
-    description: |
-      Create and retrieve payment initiations linked to active agreements.
-      Create is listed as **Bookkeeper** (also under B2B Collections) and supports optional `split_percentage_fee`.
+    description: Create and retrieve payment initiations linked to active agreements.
   - name: Checkout
     x-displayName: Checkout
     description: Generate checkout and pay links for web checkout flows.
   - name: B2B Collections
     x-displayName: B2B Collections
     description: |
-      Create inbound PayID collections and retrieve their status for B2B payment flows.
-      Includes the Bookkeeper API for PayTo payout with optional split retain on the business ledger.
+      Create inbound PayID collections, verify PayID status, and Bookkeeper payout
+      with optional split retain on the business ledger.
   - name: Webhooks
     x-displayName: Webhooks
     description: Configure notification endpoints for agreement and payment events.
@@ -773,21 +771,11 @@ paths:
                     data:
                       response_time: "2026-04-28T13:30:00.000Z"
     post:
-      tags: [Payment Initiation, B2B Collections]
-      summary: Bookkeeper
-      operationId: bookkeeperInitiatePayment
+      tags: [Payment Initiation]
+      summary: Initiate PayTo Payment Request
+      operationId: createPaymentInitiation
       description: |
-        **Bookkeeper API** (B2B Collections) — initiate a PayTo payment with optional
-        split retain on the business ledger.
-
-        Same endpoint as payment initiation: `POST /api/public/payment_initiation`.
-
-        When `split_percentage_fee` is set (for example `20` or `"20%"`):
-        - For amount `$100`, **`$80` is paid out** immediately (to `destination` when provided,
-          otherwise the merchant payout account)
-        - **`$20` remains on the business ledger** and is transferred end of day
-
-        `split_percentage_fee` is optional. Omit it for a normal full payout initiation.
+        Initiate a payment against an active payment agreement.
 
         ### Error Codes
         | Code | Status | Reason | What to do |
@@ -808,13 +796,16 @@ paths:
         | PAS_NPP_GATEWAY_TIMEOUT | 504 | Provider gateway timeout | Retry request and check status afterwards. |
         | R805 | 200 | Upstream timeout with accepted processing state | Poll status using get endpoint until terminal state. |
         | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
-        | GN-0000 | 422 | Invalid `split_percentage_fee` | Use a number greater than 0 and less than 100 (e.g. `20` or `"20%"`). |
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePaymentInitiationBody'
+              type: object
+              required: [payment_initiation]
+              properties:
+                payment_initiation:
+                  $ref: '#/components/schemas/CreatePaymentInitiationRequest'
             examples:
               minimal:
                 value:
@@ -828,17 +819,6 @@ paths:
                     payment_agreement_id: "3652PA20260408123221550"
                     amount: 10
                     notes: Invoice 1042
-              bookkeeper_split:
-                summary: Bookkeeper with 20% ledger retain
-                value:
-                  payment_initiation:
-                    payment_agreement_id: "3652PA20260408123221550"
-                    amount: 100
-                    notes: Bookkeeper payout
-                    split_percentage_fee: 20
-                  destination:
-                    bsb: "802985"
-                    account_number: "516610025"
       responses:
         '200':
           description: Payment initiation created successfully (or accepted for processing).
@@ -856,17 +836,6 @@ paths:
                       settled: false
                       status: accp
                       transfer: null
-                      created_at: "2026-04-28T13:45:00.000Z"
-                bookkeeper_created:
-                  summary: Bookkeeper initiation accepted
-                  value:
-                    message: Success
-                    data:
-                      payment_initiation_id: "12345PI1714316400"
-                      settled: false
-                      status: accp
-                      transfer: null
-                      split_percentage_fee: 20
                       created_at: "2026-04-28T13:45:00.000Z"
                 timeout_accepted:
                   summary: Accepted with timeout notice
@@ -1386,6 +1355,108 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /payment_initiation:
+    post:
+      servers:
+        - url: https://dev-api.shabaas.com/api/public
+          description: Staging
+        - url: https://api.shabaas.com/api/public
+          description: Production
+      tags: [B2B Collections]
+      summary: Bookkeeper
+      operationId: bookkeeperInitiatePayment
+      description: |
+        **Bookkeeper API** — PayTo payout with optional split retain on the business ledger.
+
+        **HTTP:** `POST /api/public/payment_initiation`
+
+        When `split_percentage_fee` is set (for example `20` or `"20%"`):
+        - For amount `$100`, **`$80` is paid out** immediately (to `destination` when provided,
+          otherwise the merchant payout account)
+        - **`$20` remains on the business ledger** and is transferred end of day
+
+        `split_percentage_fee` and `destination` are both optional.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | PAM_SB_PAG_NOT_FOUND_ERROR | 404 | Payment agreement not found | Verify `payment_agreement_id` and merchant ownership. |
+        | PAS_AGREEMENT_STATUS_INACTIVE | 422 | Agreement is not active | Activate agreement before initiating payment. |
+        | R804 | 422 | Duplicate/too-soon payment initiation detected | Wait for cooldown window and retry once eligible. |
+        | R101 | 422 | Amount exceeds per-transaction/agreement limit | Reduce `amount` to allowed limit. |
+        | R103 | 422 | Destination payout not allowed for merchant settings | Enable eligible payout settings or remove destination. |
+        | R803 | 422 | Upstream initiation failed | Retry; if persistent, contact support with request metadata. |
+        | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
+        | GN-0000 | 422 | Invalid `split_percentage_fee` | Use a number greater than 0 and less than 100 (e.g. `20` or `"20%"`). |
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookkeeperPaymentBody'
+            examples:
+              with_split:
+                summary: Bookkeeper with 20% ledger retain
+                value:
+                  payment_initiation:
+                    payment_agreement_id: "3652PA20260408123221550"
+                    amount: 100
+                    notes: Bookkeeper payout
+                    split_percentage_fee: 20
+                  destination:
+                    bsb: "802985"
+                    account_number: "516610025"
+              split_only:
+                summary: Split fee without destination
+                value:
+                  payment_initiation:
+                    payment_agreement_id: "3652PA20260408123221550"
+                    amount: 100
+                    split_percentage_fee: 20
+      responses:
+        '200':
+          description: Bookkeeper payment initiation created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+              examples:
+                created:
+                  summary: Bookkeeper initiation accepted
+                  value:
+                    message: Success
+                    data:
+                      payment_initiation_id: "12345PI1714316400"
+                      settled: false
+                      status: accp
+                      transfer: null
+                      split_percentage_fee: 20
+                      created_at: "2026-04-28T13:45:00.000Z"
+        '401':
+          description: Invalid or missing bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Developer credit balance is insufficient for this operation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Referenced payment agreement was not found for this merchant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or business rule failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1837,15 +1908,15 @@ components:
         data:
           $ref: '#/components/schemas/PaymentInitiation'
 
-    CreatePaymentInitiationBody:
+    CreateBookkeeperPaymentBody:
       type: object
       description: |
-        Request body for payment initiation / Bookkeeper.
-        `split_percentage_fee` enables Bookkeeper ledger retain.
+        Bookkeeper request body for `POST /api/public/payment_initiation`.
+        `split_percentage_fee` enables ledger retain for end-of-day transfer.
       required: [payment_initiation]
       properties:
         payment_initiation:
-          $ref: '#/components/schemas/CreatePaymentInitiationRequest'
+          $ref: '#/components/schemas/CreateBookkeeperPaymentInitiationRequest'
         destination:
           $ref: '#/components/schemas/DestinationAccount'
         split_percentage_fee:
@@ -1853,10 +1924,49 @@ components:
             - type: number
             - type: string
           description: |
-            Bookkeeper optional retain percentage (e.g. `20` or `"20%"`).
+            Optional retain percentage (e.g. `20` or `"20%"`).
             May also be sent inside `payment_initiation`.
             For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
           example: 20
+
+    CreateBookkeeperPaymentInitiationRequest:
+      type: object
+      description: Bookkeeper payment initiation fields.
+      required: [payment_agreement_id, amount]
+      properties:
+        payment_agreement_id:
+          type: string
+          description: Existing active payment agreement identifier.
+          example: "3652PA20260428120000123"
+        amount:
+          oneOf:
+            - type: number
+            - type: string
+          description: Debit amount to initiate for this request.
+          example: 100
+        notes:
+          type: string
+          maxLength: 140
+          description: Optional note attached to the initiation.
+          example: Bookkeeper payout
+        split_percentage_fee:
+          oneOf:
+            - type: number
+            - type: string
+          description: |
+            Optional retain percentage (e.g. `20` or `"20%"`).
+            Must be greater than 0 and less than 100 when provided.
+          example: 20
+
+    CreatePaymentInitiationBody:
+      type: object
+      description: Request body for payment initiation.
+      required: [payment_initiation]
+      properties:
+        payment_initiation:
+          $ref: '#/components/schemas/CreatePaymentInitiationRequest'
+        destination:
+          $ref: '#/components/schemas/DestinationAccount'
 
     CreatePaymentInitiationRequest:
       type: object
@@ -1882,14 +1992,6 @@ components:
           type: string
           description: Ignored by the API; use `notes` for optional text.
           example: (ignored)
-        split_percentage_fee:
-          oneOf:
-            - type: number
-            - type: string
-          description: |
-            Bookkeeper optional retain percentage (e.g. `20` or `"20%"`).
-            Must be greater than 0 and less than 100 when provided.
-          example: 20
 
     DirectDebitInitiationRequest:
       type: object
