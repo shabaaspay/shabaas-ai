@@ -26,7 +26,7 @@ tags:
   - name: B2B Collections
     x-displayName: B2B Collections
     description: |
-      Create inbound PayID collections, verify PayID status, and Bookkeeper payout
+      Create inbound PayID collections, verify PayID status, and Bookkeeper API payout
       with optional split retain on the business ledger.
   - name: Webhooks
     x-displayName: Webhooks
@@ -1363,7 +1363,7 @@ paths:
         - url: https://api.shabaas.com/api/public
           description: Production
       tags: [B2B Collections]
-      summary: Bookkeeper
+      summary: Bookkeeper API
       operationId: bookkeeperInitiatePayment
       description: |
         **Bookkeeper API** — PayTo payout with optional split retain on the business ledger.
