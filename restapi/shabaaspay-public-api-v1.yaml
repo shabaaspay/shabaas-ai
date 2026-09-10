@@ -1944,64 +1944,39 @@ components:
           $ref: '#/components/schemas/DestinationAccount'
 
     CreateBookkeeperPaymentInitiationRequest:
-      description: Pay from
-      oneOf:
-        - title: payment_agreement_id
-          type: object
-          required: [payment_agreement_id, amount]
-          properties:
-            payment_agreement_id:
+      type: object
+      description: Bookkeeper payment initiation fields.
+      required: [payment_agreement_id, amount]
+      properties:
+        payment_agreement_id:
+          description: Existing active payment agreement identifier i.e payid or payment_agreement_id
+          oneOf:
+            - title: payment_agreement_id
               type: string
-              description: Existing active payment agreement identifier i.e payid or payment_agreement_id
               example: "3652PA20260428120000123"
-            amount:
-              oneOf:
-                - type: number
-                - type: string
-              description: Debit amount to initiate for this request.
-              example: 100
-            notes:
+            - title: payid
               type: string
-              maxLength: 140
-              description: Optional note attached to the initiation.
-              example: Bookkeeper payout
-            split_percentage_fee:
-              oneOf:
-                - type: number
-                - type: string
-              description: |
-                Optional retain percentage (e.g. `20` or `"20%"`).
-                Must be greater than 0 and less than 100 when provided.
-                For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
-              example: 20
-        - title: payid
-          type: object
-          required: [payid, amount]
-          properties:
-            payid:
-              type: string
-              description: Existing active payment agreement identifier i.e payid or payment_agreement_id
               example: "TES307400@SBPAY.AU"
-            amount:
-              oneOf:
-                - type: number
-                - type: string
-              description: Debit amount to initiate for this request.
-              example: 100
-            notes:
-              type: string
-              maxLength: 140
-              description: Optional note attached to the initiation.
-              example: Bookkeeper payout
-            split_percentage_fee:
-              oneOf:
-                - type: number
-                - type: string
-              description: |
-                Optional retain percentage (e.g. `20` or `"20%"`).
-                Must be greater than 0 and less than 100 when provided.
-                For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
-              example: 20
+        amount:
+          oneOf:
+            - type: number
+            - type: string
+          description: Debit amount to initiate for this request.
+          example: 100
+        notes:
+          type: string
+          maxLength: 140
+          description: Optional note attached to the initiation.
+          example: Bookkeeper payout
+        split_percentage_fee:
+          oneOf:
+            - type: number
+            - type: string
+          description: |
+            Optional retain percentage (e.g. `20` or `"20%"`).
+            Must be greater than 0 and less than 100 when provided.
+            For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
+          example: 20
 
     CreatePaymentInitiationBody:
       type: object
