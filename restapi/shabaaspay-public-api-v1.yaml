@@ -221,6 +221,16 @@ paths:
       description: |
         Create a PayTo payment agreement.
 
+        ### Sandbox PayID suggestions
+        On Staging, use one of these `pay_id` values for the matching `type`. Production requires a real PayID.
+
+        | type | Suggested `pay_id` |
+        | ---- | ------------------ |
+        | email | `sample@shabaas.com`, `sample@sbpay.au` |
+        | phone | `61491570006`, `61491570156` |
+        | abn | `12345678901`, `13579246810` |
+        | org | `123456789`, `135792468` |
+
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
@@ -263,7 +273,6 @@ paths:
                     maximum_overall_allowed_amount: "2000"
                     frequency: ADHO
                     number_of_transactions_permitted: 10
-                    pay_id: sample@shabaas.com
               frequency_alias:
                 summary: Alias normalized by API (DAILY→DAIL, ADHOC→ADHO)
                 value:
@@ -273,7 +282,6 @@ paths:
                     maximum_amount: "500"
                     frequency: DAILY
                     number_of_transactions_permitted: 10
-                    pay_id: sample@shabaas.com
               invalid_frequency:
                 summary: Invalid frequency (e.g. DAY is not a valid code or alias)
                 value:
@@ -283,7 +291,6 @@ paths:
                     maximum_amount: "500"
                     frequency: DAY
                     number_of_transactions_permitted: 10
-                    pay_id: sample@shabaas.com
       responses:
         '200':
           description: Payment agreement created and submitted for payer authorization.
@@ -1588,9 +1595,11 @@ components:
           example: John Smith
         type:
           type: string
-          description: Identifier type for payer/payee details.
+          description: |
+            Identifier type for payer/payee details.
+            Sandbox `pay_id` suggestions for each type are listed on this endpoint and on the `pay_id` field.
           example: email
-          enum: [email, phone, bsb]
+          enum: [email, phone, abn, org, bsb]
         maximum_amount:
           type: string
           description: Maximum debit amount allowed per transaction under this agreement.
@@ -1617,8 +1626,14 @@ components:
           example: 10
         pay_id:
           type: string
-          description: PayID used for payer authorization (for example email PayID or mobile PayID).
-          example: sample@shabaas.com
+          description: |
+            PayID used for payer authorization.
+
+            Sandbox suggestions (Staging). Production requires a real PayID.
+            - `email`: `sample@shabaas.com`, `sample@sbpay.au`
+            - `phone`: `61491570006`, `61491570156`
+            - `abn`: `12345678901`, `13579246810`
+            - `org`: `123456789`, `135792468`
         bsb:
           oneOf:
             - type: string
@@ -1720,14 +1735,22 @@ components:
           example: "987654321"
         type:
           type: string
-          description: Identifier type hint for payer details.
-          enum: [email, phone, bsb]
+          description: |
+            Identifier type hint for payer details.
+            Sandbox `pay_id` suggestions for each type are listed on Create PayTo Agreement and on the `pay_id` field.
+          enum: [email, phone, abn, org, bsb]
           default: email
           example: email
         pay_id:
           type: string
-          description: Required PayID value for payer authorization context.
-          example: sample@shabaas.com
+          description: |
+            Required PayID value for payer authorization context.
+
+            Sandbox suggestions (Staging). Production requires a real PayID.
+            - `email`: `sample@shabaas.com`, `sample@sbpay.au`
+            - `phone`: `61491570006`, `61491570156`
+            - `abn`: `12345678901`, `13579246810`
+            - `org`: `123456789`, `135792468`
         agreement_type:
           type: string
           description: Optional agreement type code used by downstream provider.
@@ -1921,34 +1944,64 @@ components:
           $ref: '#/components/schemas/DestinationAccount'
 
     CreateBookkeeperPaymentInitiationRequest:
-      type: object
-      description: Bookkeeper payment initiation fields.
-      required: [payment_agreement_id, amount]
-      properties:
-        payment_agreement_id:
-          type: string
-          description: Existing active payment agreement identifier.
-          example: "3652PA20260428120000123"
-        amount:
-          oneOf:
-            - type: number
-            - type: string
-          description: Debit amount to initiate for this request.
-          example: 100
-        notes:
-          type: string
-          maxLength: 140
-          description: Optional note attached to the initiation.
-          example: Bookkeeper payout
-        split_percentage_fee:
-          oneOf:
-            - type: number
-            - type: string
-          description: |
-            Optional retain percentage (e.g. `20` or `"20%"`).
-            Must be greater than 0 and less than 100 when provided.
-            For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
-          example: 20
+      description: Pay from
+      oneOf:
+        - title: payment_agreement_id
+          type: object
+          required: [payment_agreement_id, amount]
+          properties:
+            payment_agreement_id:
+              type: string
+              description: Existing active payment agreement identifier i.e payid or payment_agreement_id
+              example: "3652PA20260428120000123"
+            amount:
+              oneOf:
+                - type: number
+                - type: string
+              description: Debit amount to initiate for this request.
+              example: 100
+            notes:
+              type: string
+              maxLength: 140
+              description: Optional note attached to the initiation.
+              example: Bookkeeper payout
+            split_percentage_fee:
+              oneOf:
+                - type: number
+                - type: string
+              description: |
+                Optional retain percentage (e.g. `20` or `"20%"`).
+                Must be greater than 0 and less than 100 when provided.
+                For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
+              example: 20
+        - title: payid
+          type: object
+          required: [payid, amount]
+          properties:
+            payid:
+              type: string
+              description: Existing active payment agreement identifier i.e payid or payment_agreement_id
+              example: "TES307400@SBPAY.AU"
+            amount:
+              oneOf:
+                - type: number
+                - type: string
+              description: Debit amount to initiate for this request.
+              example: 100
+            notes:
+              type: string
+              maxLength: 140
+              description: Optional note attached to the initiation.
+              example: Bookkeeper payout
+            split_percentage_fee:
+              oneOf:
+                - type: number
+                - type: string
+              description: |
+                Optional retain percentage (e.g. `20` or `"20%"`).
+                Must be greater than 0 and less than 100 when provided.
+                For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
+              example: 20
 
     CreatePaymentInitiationBody:
       type: object
@@ -2017,7 +2070,7 @@ components:
         type:
           type: string
           description: Payer identifier/account type hint.
-          enum: [bsb, email, phone]
+          enum: [bsb, email, phone, abn, org]
           example: bsb
         bsb:
           type: string
@@ -2035,8 +2088,14 @@ components:
           example: "818694776"
         pay_id:
           type: string
-          description: Optional payer PayID.
-          example: sample@shabaas.com
+          description: |
+            Optional payer PayID.
+
+            Sandbox suggestions (Staging). Production requires a real PayID.
+            - `email`: `sample@shabaas.com`, `sample@sbpay.au`
+            - `phone`: `61491570006`, `61491570156`
+            - `abn`: `12345678901`, `13579246810`
+            - `org`: `123456789`, `135792468`
         checkout_page:
           type: string
           description: Optional checkout page marker/reference.
