@@ -1949,6 +1949,7 @@ components:
       required: [payment_agreement_id, amount]
       properties:
         payment_agreement_id:
+          title: Pay from
           description: Existing active payment agreement identifier i.e payid or payment_agreement_id
           oneOf:
             - title: payment_agreement_id
