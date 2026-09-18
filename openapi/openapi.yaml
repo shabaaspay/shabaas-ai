@@ -13,6 +13,7 @@ tags:
   - name: Authorization
   - name: Payment Agreements
   - name: Payment Initiations
+  - name: PayID
 security:
   - BearerAuth: []
 paths:
@@ -111,6 +112,14 @@ paths:
       x-mcp-tool: create_payment_agreement
       summary: Create payment agreement
       description: Used by MCP tool `create_payment_agreement`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate payment agreement creation.
       requestBody:
         required: true
         content:
@@ -213,6 +222,45 @@ paths:
                     error_code: MOV_NPP_PAYMENT_NOT_SUPPORTED
                     data:
                       response_time: "2026-04-08T12:28:26.759Z"
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                intent_token_required:
+                  value:
+                    message: Missing or invalid Ed25519 intent verification token
+                    error_code: GN-0403
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                idempotency_conflict:
+                  value:
+                    message: Idempotency key already processed with different payload
+                    error_code: GN-0409
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '429':
+          description: Rate limit or spending limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limit:
+                  value:
+                    message: Too many requests
+                    error_code: GN-0429
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
 
   /api/public/payment_initiation:
     get:
@@ -265,6 +313,14 @@ paths:
       summary: Initiate payment
       description: |
         Used by MCP tool `initiate_payment`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate payment initiation.
       requestBody:
         required: true
         content:
@@ -368,6 +424,45 @@ paths:
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                intent_token_required:
+                  value:
+                    message: Missing or invalid Ed25519 intent verification token
+                    error_code: GN-0403
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                idempotency_conflict:
+                  value:
+                    message: Idempotency key already processed with different payload
+                    error_code: GN-0409
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
+        '429':
+          description: Rate limit or spending limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limit:
+                  value:
+                    message: Too many requests
+                    error_code: GN-0429
+                    data:
+                      response_time: "2026-04-10T12:00:00.000Z"
 
   /api/public/payment_initiation/direct_debit:
     post:
@@ -375,6 +470,14 @@ paths:
       x-mcp-tool: initiate_direct_debit
       summary: Initiate direct debit payment
       description: Used by MCP tool `initiate_direct_debit`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate direct debit payment.
       requestBody:
         required: true
         content:
@@ -409,8 +512,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation or business-rule error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit or spending limit exceeded
           content:
             application/json:
               schema:
@@ -422,6 +543,14 @@ paths:
       x-mcp-tool: update_bilateral_agreement
       summary: Bilateral amend payment agreement
       description: Used by MCP tool `update_bilateral_agreement`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate bilateral amendment.
       requestBody:
         required: true
         content:
@@ -453,14 +582,262 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Payment agreement not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation or business-rule error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit or spending limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_agreement/resend:
+    patch:
+      tags: [Payment Agreements]
+      x-mcp-tool: resend_payment_agreement
+      summary: Resend payment agreement authorization request
+      description: Used by MCP tool `resend_payment_agreement`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate resend requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_agreement]
+              properties:
+                intent_token:
+                  type: string
+                  description: Optional Ed25519 single-use intent verification token
+                payment_agreement:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    phone_number:
+                      type: string
+      responses:
+        '200':
+          description: Resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/public/payment_agreement/cancel:
+    delete:
+      tags: [Payment Agreements]
+      x-mcp-tool: cancel_payment_agreement
+      summary: Cancel payment agreement
+      description: Used by MCP tool `cancel_payment_agreement`.
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          description: payment_agreement_id
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate cancellation requests.
+      responses:
+        '200':
+          description: Cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/collections/payid:
+    post:
+      tags: [PayID]
+      x-mcp-tool: create_payid
+      summary: Create incoming PayID
+      description: Used by MCP tool `create_payid`.
+      security:
+        - MerchantUuidAuth: []
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate PayID creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayIdRequest'
+      responses:
+        '200':
+          description: PayID created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPayIdResponse'
+        '400':
+          description: Validation or provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/collections/payid/status:
+    get:
+      tags: [PayID]
+      x-mcp-tool: get_payid_status
+      summary: Check PayID collection status
+      description: Used by MCP tool `get_payid_status`.
+      security:
+        - MerchantUuidAuth: []
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: payid
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: expected_amount
+          required: false
+          schema:
+            type: number
+            format: float
+      responses:
+        '200':
+          description: PayID status result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPayIdStatusResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: PayID not found
           content:
             application/json:
               schema:
@@ -525,8 +902,19 @@ components:
       description: |
         Bearer token returned by `/api/public/authorization` after exchanging a ShaBaas API key.
         For MCP edge access, clients send the API key in `Authorization` (plain or `Bearer <key>`).
+    MerchantUuidAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Merchant UUID used by PayID collection endpoints.
 
   schemas:
+    SuccessMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
     ErrorResponse:
       type: object
       required: [message, error_code, data]
@@ -596,6 +984,9 @@ components:
         - frequency
         - number_of_transactions_permitted
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         phone_number:
           type: string
         name:
@@ -678,6 +1069,9 @@ components:
       type: object
       required: [payment_agreement_id, amount]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         payment_agreement_id:
           type: string
         amount:
@@ -695,6 +1089,9 @@ components:
       type: object
       required: [name, amount, consent_received, bsb, account_number]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         name:
           type: string
         amount:
@@ -723,6 +1120,9 @@ components:
       type: object
       required: [maximum_amount, frequency, number_of_transactions_permitted]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         id:
           type: string
         phone_number:
@@ -767,3 +1167,61 @@ components:
       type: object
       additionalProperties: true
       description: Optional destination payload used by direct debit flow.
+
+    CreatePayIdRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token
+        amount:
+          type: number
+          format: float
+        merchant_display_name:
+          type: string
+        merchant_country:
+          type: string
+          default: AU
+        merchant_category:
+          type: string
+        merchant_status:
+          type: string
+        merchant_id:
+          type: string
+
+    SuccessPayIdResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            payid:
+              type: string
+            amount:
+              type: number
+            status:
+              type: string
+            expires_at:
+              type: string
+
+    SuccessPayIdStatusResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            received_at:
+              type: string
+              nullable: true
+            expected_amount:
+              type: number
+            received_amount:
+              type: number

@@ -139,3 +139,41 @@ export const GetAuthTokenInputSchema = z.object({
   include_token_in_response: z.boolean().optional().default(false)
 });
 
+export const CancelPaymentAgreementInputSchema = z.object({
+  authorization: authorizationParam,
+  payment_agreement_id: z.string().describe('The payment agreement ID to cancel'),
+  intent_token: z
+    .string()
+    .optional()
+    .describe('Signed Ed25519 human-approved intent token for write execution in production')
+});
+
+export const InitiateDirectDebitInputSchema = z.object({
+  authorization: authorizationParam,
+  name: z.string(),
+  amount: z.union([z.string(), z.number()]).refine((val) => Number(val) > 0, 'Amount must be greater than zero'),
+  consent_received: z.union([z.boolean(), z.literal('true')]),
+  bsb: z.union([z.string(), z.number()]),
+  account_number: z.union([z.string(), z.number()]),
+  phone_number: z.string().optional(),
+  notes: z.string().optional(),
+  intent_token: z
+    .string()
+    .optional()
+    .describe('Signed Ed25519 human-approved intent token for write execution in production')
+});
+
+export const CreatePayIdInputSchema = z.object({
+  authorization: authorizationParam,
+  amount: z.number().refine((val) => val > 0, 'Amount must be greater than zero'),
+  merchant_display_name: z.string().optional(),
+  merchant_country: z.string().optional().default('AU'),
+  merchant_category: z.string().optional(),
+  merchant_status: z.string().optional(),
+  merchant_id: z.string().optional(),
+  intent_token: z
+    .string()
+    .optional()
+    .describe('Signed Ed25519 human-approved intent token for write execution in production')
+});
+

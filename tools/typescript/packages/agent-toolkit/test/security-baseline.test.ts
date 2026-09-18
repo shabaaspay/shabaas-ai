@@ -9,10 +9,12 @@ import {
   InMemoryNonceStore,
   type IntentClaims
 } from '../dist/security/intentValidator.js';
-import { checkWritePermission } from '../dist/security/intent-guard.js';
+import { checkWritePermission, isWriteTool } from '../dist/security/intent-guard.js';
 import { createReadTools } from '../dist/tools/read-tools.js';
 import { createWriteTools } from '../dist/tools/write-tools.js';
-import { ShabaasApiClient } from '../dist/api/client.js';
+import { ShabaasApiClient, IdempotencyConflictError } from '../dist/api/client.js';
+import { PaymentRailCircuitBreaker } from '../dist/security/circuitBreaker.js';
+import { PostgresNonceStore } from '../dist/security/postgresNonceStore.js';
 import {
   redactSensitiveData,
   maskBsb,
@@ -287,3 +289,164 @@ describe('HTTP/SSE Edge Hardening & CORS', () => {
     assert.equal(SSE_SECURITY_HEADERS['X-Accel-Buffering'], 'no');
   });
 });
+
+describe('Client Auto-Idempotency & Canonical Monoova Errors', () => {
+  test('instantiates IdempotencyConflictError with canonical GN-0409 error envelope', () => {
+    const error = new IdempotencyConflictError(
+      'Duplicate request detected',
+      'GN-0409',
+      'e9a2f1b4-2e63-4cf2-83bb-c78203c9b741',
+      { response_time: '2026-04-10T12:00:00.000Z' }
+    );
+
+    assert.equal(error.name, 'IdempotencyConflictError');
+    assert.equal(error.statusCode, 409);
+    assert.equal(error.errorCode, 'GN-0409');
+    assert.equal(error.idempotencyKey, 'e9a2f1b4-2e63-4cf2-83bb-c78203c9b741');
+    assert.equal(error.data.response_time, '2026-04-10T12:00:00.000Z');
+  });
+
+  test('auto-generates a valid UUIDv4 idempotency key if omitted', () => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const generated = crypto.randomUUID();
+    assert.match(generated, uuidRegex);
+  });
+});
+
+describe('Circuit Breaker per Rail Telemetry', () => {
+  test('tracks healthy transactions and remains HEALTHY under low failure rate', () => {
+    const cb = new PaymentRailCircuitBreaker({ minTransactions: 20, failureThresholdPct: 0.15 });
+
+    for (let i = 0; i < 25; i++) {
+      cb.recordTransaction('PayTo', true);
+    }
+
+    const stats = cb.getRailStats('PayTo');
+    assert.equal(stats.status, 'HEALTHY');
+    assert.equal(stats.isTripped, false);
+    assert.equal(stats.failureCount, 0);
+    assert.equal(cb.isRailAvailable('PayTo'), true);
+  });
+
+  test('trips rail circuit breaker when failure rate exceeds 15% on >= 20 transactions', () => {
+    const cb = new PaymentRailCircuitBreaker({ minTransactions: 20, failureThresholdPct: 0.15 });
+
+    // 16 successes, 4 failures out of 20 = 20% failure rate (> 15% threshold)
+    for (let i = 0; i < 16; i++) {
+      cb.recordTransaction('PayTo', true);
+    }
+    for (let i = 0; i < 4; i++) {
+      cb.recordTransaction('PayTo', false, 'MOV_NPP_PAYMENT_NOT_SUPPORTED');
+    }
+
+    const stats = cb.getRailStats('PayTo');
+    assert.equal(stats.status, 'TRIPPED');
+    assert.equal(stats.isTripped, true);
+    assert.equal(stats.failureCount, 4);
+    assert.equal(stats.failureRate, 0.2);
+    assert.equal(cb.isRailAvailable('PayTo'), false);
+
+    // BECS rail remains healthy (rail isolation)
+    assert.equal(cb.isRailAvailable('BECS'), true);
+
+    // Reset recovers the rail
+    cb.reset('PayTo');
+    assert.equal(cb.isRailAvailable('PayTo'), true);
+  });
+});
+
+describe('PostgreSQL Atomic Nonce Store (Multi-Instance Replay Protection)', () => {
+  test('executes atomic update query and marks nonce as consumed', async () => {
+    const executedQueries: Array<{ sql: string; params: any[] }> = [];
+
+    const mockQueryRunner = async (sql: string, params: any[]) => {
+      executedQueries.push({ sql, params });
+      return { rowCount: 1 };
+    };
+
+    const store = new PostgresNonceStore({
+      tableName: 'mcp_intent_nonces',
+      queryRunner: mockQueryRunner
+    });
+
+    const nonce = crypto.randomUUID();
+    const result = await store.consumeNonce(nonce, 'hash_abc', 'merchant_123', new Date(Date.now() + 60000));
+
+    assert.equal(result.consumed, true);
+    assert.equal(executedQueries.length, 1);
+    assert.ok(executedQueries[0].sql.includes('UPDATE mcp_intent_nonces'));
+    assert.ok(executedQueries[0].sql.includes("SET status = 'CONSUMED'"));
+    assert.equal(executedQueries[0].params[0], nonce);
+  });
+
+  test('rejects consumed or expired nonce when rowCount is 0', async () => {
+    const mockQueryRunner = async () => ({ rowCount: 0 });
+
+    const store = new PostgresNonceStore({
+      queryRunner: mockQueryRunner
+    });
+
+    const nonce = crypto.randomUUID();
+    const result = await store.consumeNonce(nonce, 'hash_abc', 'merchant_123', new Date(Date.now() + 60000));
+
+    assert.equal(result.consumed, false);
+    assert.ok(result.reason?.includes('could not be consumed'));
+  });
+});
+
+describe('Expanded Write Tools Gating (PayTo + BECS Direct Debit + Cancellation)', () => {
+  const dummyConfig = {
+    environment: 'production' as const,
+    allowUnverifiedWrites: false,
+    shabaasAuthUuid: 'key_prod_real123',
+    sandboxUrl: 'https://dev-api.shabaas.com',
+    productionUrl: 'https://api.shabaas.com',
+    httpPort: 3001,
+    httpHost: '0.0.0.0',
+    mcpHttpApiKey: '',
+    mcpStdioApiKey: '',
+    allowedOrigins: ['*'],
+    rateLimitPerMinute: 60,
+    rateLimitPerHour: 1000,
+    authTokenMaxAgeMinutes: 50,
+    policyCacheTtlMs: 300_000
+  };
+
+  const apiClient = new ShabaasApiClient(dummyConfig);
+  const writeTools = createWriteTools(apiClient, dummyConfig);
+
+  test('identifies all mutating operations as write tools in intent-guard', () => {
+    assert.equal(isWriteTool('initiate_payment'), true);
+    assert.equal(isWriteTool('create_payment_agreement'), true);
+    assert.equal(isWriteTool('initiate_direct_debit'), true);
+    assert.equal(isWriteTool('cancel_payment_agreement'), true);
+    assert.equal(isWriteTool('create_payid'), true);
+    assert.equal(isWriteTool('get_payment_agreement'), false);
+    assert.equal(isWriteTool('get_payment_initiation'), false);
+  });
+
+  test('blocks BECS initiate_direct_debit without verified intent token in production', async () => {
+    const result = await writeTools.initiate_direct_debit.execute({
+      name: 'John Doe',
+      amount: 250,
+      consent_received: true,
+      bsb: '062000',
+      account_number: '12345678'
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.insights.status, 'write_restricted');
+    assert.ok(result.summary.includes('Production payment execution for "initiate_direct_debit" is restricted'));
+  });
+
+  test('blocks cancel_payment_agreement without verified intent token in production', async () => {
+    const result = await writeTools.cancel_payment_agreement.execute({
+      payment_agreement_id: 'pa_mandate_999'
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.insights.status, 'write_restricted');
+    assert.ok(result.summary.includes('Production payment execution for "cancel_payment_agreement" is restricted'));
+  });
+});
+

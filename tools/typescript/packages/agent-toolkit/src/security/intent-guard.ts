@@ -17,7 +17,15 @@ export type WritePermissionResult = {
     | 'NONCE_REPLAY_DETECTED';
 };
 
-const WRITE_TOOLS = new Set(['initiate_payment', 'create_payment_agreement']);
+const WRITE_TOOLS = new Set([
+  'initiate_payment',
+  'create_payment_agreement',
+  'initiate_direct_debit',
+  'cancel_payment_agreement',
+  'update_bilateral_agreement',
+  'resend_payment_agreement',
+  'create_payid'
+]);
 
 export function isWriteTool(toolName: string): boolean {
   return WRITE_TOOLS.has(toolName);

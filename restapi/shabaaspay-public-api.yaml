@@ -112,6 +112,14 @@ paths:
       tags: [Payment Agreements]
       summary: Create payment agreement
       description: Create a PayTo payment agreement.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate payment agreement creation.
       requestBody:
         required: true
         content:
@@ -214,11 +222,37 @@ paths:
                     error_code: MOV_NPP_PAYMENT_NOT_SUPPORTED
                     data:
                       response_time: "2026-04-08T12:28:26.759Z"
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit or spending limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/payment_agreement/resend:
     patch:
       tags: [Payment Agreements]
       summary: Resend payment agreement authorization request
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate resend requests.
       requestBody:
         required: true
         content:
@@ -245,6 +279,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User or agreement not found
           content:
@@ -264,6 +310,12 @@ paths:
                     error_code: PAM_SB_PAG_NOT_FOUND_ERROR
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Resend business rule failure
           content:
@@ -277,11 +329,25 @@ paths:
                     error_code: RESEND_MAX_REACHED
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/payment_agreement/bilateral:
     patch:
       tags: [Payment Agreements]
       summary: Bilateral amend payment agreement
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate bilateral amendment.
       requestBody:
         required: true
         content:
@@ -308,8 +374,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
           content:
             application/json:
               schema:
@@ -327,6 +411,12 @@ paths:
                     error_code: M100
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/payment_agreement/cancel:
     delete:
@@ -338,6 +428,13 @@ paths:
           required: true
           schema:
             type: string
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate cancellation requests.
       responses:
         '200':
           description: Agreement cancelled
@@ -345,8 +442,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Payment agreement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -356,6 +477,14 @@ paths:
     post:
       tags: [Payment Agreements]
       summary: Create one-time payment agreement
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate one-time agreement creation.
       requestBody:
         required: true
         content:
@@ -375,8 +504,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -480,6 +633,14 @@ paths:
       summary: Initiate payment
       description: |
         Initiate a payment against an active payment agreement.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate payment initiation.
       requestBody:
         required: true
         content:
@@ -583,11 +744,37 @@ paths:
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit or spending limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/payment_initiation/direct_debit:
     post:
       tags: [Payment Initiations]
       summary: Initiate direct debit payment
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate direct debit payment.
       requestBody:
         required: true
         content:
@@ -607,6 +794,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Direct debit validation or business error
           content:
@@ -626,6 +831,12 @@ paths:
                     error_code: R801
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/public/webhooks:
     post:
@@ -673,12 +884,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/collections/payid:
+  /v1/collections/payid:
     post:
       tags: [PayID Collections]
       summary: Create inbound PayID collection
       security:
         - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique UUIDv4 to prevent duplicate PayID creation.
       requestBody:
         required: true
         content:
@@ -692,8 +912,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPayIdCreateResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden / Intent Token Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Payment method not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency conflict
           content:
             application/json:
               schema:
@@ -704,13 +942,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/collections/payid/status:
+  /v1/collections/payid/status:
     get:
       tags: [PayID Collections]
       summary: Get inbound PayID status
       security:
         - ApiKeyAuth: []
+        - BearerAuth: []
       parameters:
         - in: query
           name: payid
@@ -729,6 +974,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPayIdStatusResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: PayID not found
           content:
@@ -830,6 +1081,9 @@ components:
         - number_of_transactions_permitted
         - pay_id
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         phone_number:
           type: string
         name:
@@ -873,6 +1127,9 @@ components:
         - required: [id]
         - required: [phone_number]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         id:
           type: string
         phone_number:
@@ -887,6 +1144,9 @@ components:
         - number_of_transactions_permitted
         - agreement_type
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         id:
           type: string
         maximum_amount:
@@ -904,6 +1164,9 @@ components:
       type: object
       required: [name, amount]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         phone_number:
           type: string
         email:
@@ -1015,6 +1278,9 @@ components:
       type: object
       required: [payment_agreement_id, amount]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         payment_agreement_id:
           type: string
         amount:
@@ -1032,6 +1298,9 @@ components:
       type: object
       required: [name, phone_number, bsb, amount, consent_received]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         id:
           type: string
         phone_number:
@@ -1109,6 +1378,9 @@ components:
       type: object
       required: [amount]
       properties:
+        intent_token:
+          type: string
+          description: Optional Ed25519 single-use intent verification token authorizing this payment mutation.
         amount:
           type: number
           format: float

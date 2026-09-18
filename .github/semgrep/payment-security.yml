@@ -1,0 +1,29 @@
+rules:
+  - id: shabaas-unredacted-banking-log
+    message: "Potential leak of sensitive banking credentials (BSB, account number, tokens, or PayID) into logs. Use `maskBankingPayload` or `redactSensitiveString` before logging."
+    languages: [javascript, typescript]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: console.$LOG(..., <... $OBJ.account_number ...>, ...)
+          - pattern: console.$LOG(..., <... $OBJ.bsb ...>, ...)
+          - pattern: console.$LOG(..., <... $OBJ.intent_token ...>, ...)
+          - pattern: console.$LOG(..., <... $OBJ.pay_id ...>, ...)
+
+  - id: shabaas-raw-axios-bypass-ssrf
+    message: "Direct instantiation of axios without dial-time DNS SSRF protection detected. Use `createSafeHttpAgents` or `ShabaasApiClient`."
+    languages: [javascript, typescript]
+    severity: ERROR
+    patterns:
+      - pattern: axios.create({..., baseURL: $URL, ...})
+      - pattern-not: axios.create({..., httpAgent: $HA, httpsAgent: $HSA, ...})
+
+  - id: shabaas-unverified-merchant-id-bola
+    message: "Potential BOLA vulnerability: Never trust client-supplied `merchant_id` directly without resolving through `getAuthenticatedMerchantId`."
+    languages: [javascript, typescript]
+    severity: WARNING
+    patterns:
+      - pattern: |
+          const $M = $REQ.merchant_id;
+          ...
+          $CLIENT.getPaymentAgreement(..., $M, ...);

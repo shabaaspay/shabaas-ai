@@ -4,7 +4,25 @@ import { Config, getApiUrl } from '../config/index.js';
 import { ApiResponse } from '../types/index.js';
 import { createSafeHttpAgents } from '../utils/ssrfSafeClient.js';
 
-export type RequestAuthOptions = { requestUuid?: string };
+export type RequestAuthOptions = {
+  requestUuid?: string;
+  idempotencyKey?: string;
+};
+
+export class IdempotencyConflictError extends Error {
+  public readonly statusCode = 409;
+  public readonly errorCode: string;
+  public readonly idempotencyKey?: string;
+  public readonly data?: any;
+
+  constructor(message: string, errorCode = 'GN-0409', idempotencyKey?: string, data?: any) {
+    super(message);
+    this.name = 'IdempotencyConflictError';
+    this.errorCode = errorCode;
+    this.idempotencyKey = idempotencyKey;
+    this.data = data;
+  }
+}
 
 const tokenCache = new Map<string, { token: string; fetchedAt: number }>();
 const CACHE_TTL_MS = 50 * 60 * 1000;
@@ -82,15 +100,25 @@ export class ShabaasApiClient {
     return token;
   }
 
-  private async withAuthRetry<T>(fn: (token: string) => Promise<T>, requestUuid?: string): Promise<T> {
+  private async withAuthRetry<T>(fn: (token: string, idempotencyKey: string) => Promise<T>, options?: RequestAuthOptions): Promise<T> {
+    const requestUuid = options?.requestUuid;
+    const idempotencyKey = options?.idempotencyKey || crypto.randomUUID();
+
     try {
       const token = await this.getTokenForRequest(requestUuid);
-      return await fn(token);
+      return await fn(token, idempotencyKey);
     } catch (err: any) {
+      if (err?.response?.status === 409) {
+        const data = err.response.data;
+        const msg = data?.message || 'Idempotency conflict: a request with this Idempotency-Key has already been processed with different parameters.';
+        const code = data?.error_code || 'GN-0409';
+        throw new IdempotencyConflictError(msg, code, idempotencyKey, data);
+      }
+
       if ((err?.response?.status === 401 || err?.response?.status === 403) && requestUuid) {
         tokenCache.delete(requestUuid.trim());
         const token = await this.getTokenForRequest(requestUuid);
-        return await fn(token);
+        return await fn(token, idempotencyKey);
       }
       throw err;
     }
@@ -107,26 +135,68 @@ export class ShabaasApiClient {
         headers: { Authorization: token }
       });
       return response.data;
-    }, options?.requestUuid);
+    }, options);
   }
 
   async createPaymentAgreement(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
-    return this.withAuthRetry(async (token) => {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
       const response = await this.client.post('/api/public/payment_agreement', { payment_agreement: data }, {
-        headers: { Authorization: token }
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        }
       });
       return response.data;
-    }, options?.requestUuid);
+    }, options);
+  }
+
+  async resendPaymentAgreement(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
+      const response = await this.client.patch('/api/public/payment_agreement/resend', { payment_agreement: data }, {
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        }
+      });
+      return response.data;
+    }, options);
+  }
+
+  async updateBilateralAgreement(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
+      const response = await this.client.patch('/api/public/payment_agreement/bilateral', { payment_agreement: data }, {
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        }
+      });
+      return response.data;
+    }, options);
+  }
+
+  async cancelPaymentAgreement(id: string, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
+      const response = await this.client.delete(`/api/public/payment_agreement/cancel?id=${encodeURIComponent(id)}`, {
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        }
+      });
+      return response.data;
+    }, options);
   }
 
   async initiatePayment(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
-    return this.withAuthRetry(async (token) => {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
       const response = await this.client.post('/api/public/payment_initiation', { payment_initiation: data }, {
-        headers: { Authorization: token },
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        },
         timeout: 65000
       });
       return response.data;
-    }, options?.requestUuid);
+    }, options);
   }
 
   async getPaymentInitiation(id: string, options?: RequestAuthOptions): Promise<ApiResponse> {
@@ -135,7 +205,44 @@ export class ShabaasApiClient {
         headers: { Authorization: token }
       });
       return response.data;
-    }, options?.requestUuid);
+    }, options);
+  }
+
+  async initiateDirectDebit(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
+      const response = await this.client.post('/api/public/payment_initiation/direct_debit', { direct_debit: data }, {
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        },
+        timeout: 65000
+      });
+      return response.data;
+    }, options);
+  }
+
+  async createPayId(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token, idempotencyKey) => {
+      const response = await this.client.post('/v1/collections/payid', data, {
+        headers: {
+          Authorization: token,
+          'Idempotency-Key': idempotencyKey
+        }
+      });
+      return response.data;
+    }, options);
+  }
+
+  async getPayIdStatus(payid: string, expectedAmount?: number, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token) => {
+      let url = `/v1/collections/payid/status?payid=${encodeURIComponent(payid)}`;
+      if (expectedAmount !== undefined && !isNaN(expectedAmount)) {
+        url += `&expected_amount=${encodeURIComponent(String(expectedAmount))}`;
+      }
+      const response = await this.client.get(url, {
+        headers: { Authorization: token }
+      });
+      return response.data;
+    }, options);
   }
 }
-
