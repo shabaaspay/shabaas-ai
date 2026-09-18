@@ -4,6 +4,10 @@
 
 # ShaBaas AI
 
+> [!IMPORTANT]
+> **Branch Review Guide for Developers & AI Agents**:
+> If you are reviewing the security baseline and canonical OpenAPI parity implemented in this branch (`feature/security-baseline-and-mcp-gating`), please refer to [**`FEATURE_README.md`**](./FEATURE_README.md) for full architecture maps, security controls (SSRF, Ed25519 intent gating, auto-idempotency, circuit breakers, BOLA defense), strict invariants (Cloudflare Rule #2), and verification commands.
+
 This repo is the one-stop shop for building AI-powered products and workflows on top of ShaBaasPay.
 
 It contains SDKs and integration assets to connect ShaBaasPay with LLMs and agent frameworks, including:
