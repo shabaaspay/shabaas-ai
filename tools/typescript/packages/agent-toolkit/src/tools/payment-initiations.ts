@@ -2,6 +2,7 @@ import { ShabaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { GetPaymentInitiationInputSchema, InitiatePaymentInputSchema, PaymentInitiationSchema } from '../types/index.js';
 import { validateInput } from '../security/validator.js';
+import { verifyWriteIntentAsync } from '../security/intent-guard.js';
 import { validationErrorResponse, toolErrorResponse, type ToolContext } from './response-helpers.js';
 import { enrichPaymentInitiation } from '../enricher/index.js';
 
@@ -14,6 +15,27 @@ export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config
       execute: async (args: any, context?: ToolContext) => {
         const validation = validateInput(InitiatePaymentInputSchema, args);
         if (!validation.success) return validationErrorResponse(validation.errors ?? [], config.environment);
+
+        const writeCheck = await verifyWriteIntentAsync(config, 'initiate_payment', validation.data as any);
+        if (!writeCheck.allowed) {
+          return {
+            success: false,
+            timestamp: new Date().toISOString(),
+            data: null,
+            metadata: {
+              requestId: `req_${Date.now()}`,
+              processingTime: 0,
+              environment: config.environment
+            },
+            insights: {
+              status: 'write_restricted',
+              canProceed: false,
+              nextActions: ['request_human_approval', 'obtain_intent_token'],
+              warnings: [writeCheck.reason || 'Write execution restricted']
+            },
+            summary: writeCheck.reason || 'Payment initiation write restricted'
+          };
+        }
         try {
           const start = Date.now();
           const { enrich = true, include_raw = false, authorization: _auth, description, notes, ...rest } =

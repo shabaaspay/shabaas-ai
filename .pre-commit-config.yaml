@@ -1,0 +1,24 @@
+# Pre-commit configuration for ShaBaas Pay repositories
+# Prevents secrets, sensitive credentials, and vulnerable changes from being committed locally.
+
+repos:
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.88.15
+    hooks:
+      - id: trufflehog
+        name: TruffleHog Secret Scanner
+        description: Scans staged commits for verified credentials, API keys, and secrets.
+        entry: trufflehog git file://. --since-commit HEAD --only-verified --fail
+        language: system
+        stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

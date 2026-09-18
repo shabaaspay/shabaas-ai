@@ -6,7 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @shabaaspay/agent-toolkit"
+    "build": "npm run build -w @shabaaspay/agent-toolkit",
+    "test": "npm run test -w @shabaaspay/agent-toolkit"
   }
 }
 

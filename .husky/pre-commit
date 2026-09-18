@@ -1,0 +1,15 @@
+#!/bin/sh
+# ShaBaas Pay Pre-commit Hook: Run TruffleHog secret scanning before committing
+echo "Running pre-commit TruffleHog secret scan..."
+
+if command -v trufflehog >/dev/null 2>&1; then
+  trufflehog git file://. --since-commit HEAD --only-verified --fail
+  if [ $? -ne 0 ]; then
+    echo "ERROR: TruffleHog detected active credentials or secrets in staged files!"
+    echo "Commit aborted. Please remove or revoke secrets before proceeding."
+    exit 1
+  fi
+else
+  echo "WARNING: TruffleHog is not installed locally. Secret scan skipped locally."
+  echo "Ensure TruffleHog is installed or let GitHub Actions run the verification scan."
+fi

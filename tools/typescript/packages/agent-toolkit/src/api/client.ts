@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { Config, getApiUrl } from '../config/index.js';
 import { ApiResponse } from '../types/index.js';
+import { createSafeHttpAgents } from '../utils/ssrfSafeClient.js';
 
 export type RequestAuthOptions = { requestUuid?: string };
 
@@ -13,9 +14,13 @@ export class ShabaasApiClient {
 
   constructor(config: Config) {
     this.config = config;
+    const { httpAgent, httpsAgent } = createSafeHttpAgents();
     this.client = axios.create({
       baseURL: getApiUrl(config),
       headers: { 'Content-Type': 'application/json', 'X-Shabaas-Client': 'mcp' },
+      httpAgent,
+      httpsAgent,
+      maxRedirects: 0,
       timeout: 30000
     });
   }

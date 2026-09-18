@@ -103,7 +103,11 @@ export const CreatePaymentAgreementInputSchema = z.object({
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   enrich: z.boolean().optional().default(true),
-  include_raw: z.boolean().optional().default(false)
+  include_raw: z.boolean().optional().default(false),
+  intent_token: z
+    .string()
+    .optional()
+    .describe('Signed Ed25519 human-approved intent token for write execution in production')
 });
 
 export const InitiatePaymentInputSchema = z.object({
@@ -116,7 +120,11 @@ export const InitiatePaymentInputSchema = z.object({
     .optional()
     .describe('Alias for notes when calling tools; mapped to API field `notes`'),
   enrich: z.boolean().optional().default(true),
-  include_raw: z.boolean().optional().default(false)
+  include_raw: z.boolean().optional().default(false),
+  intent_token: z
+    .string()
+    .optional()
+    .describe('Signed Ed25519 human-approved intent token for write execution in production')
 });
 
 export const GetPaymentInitiationInputSchema = z.object({

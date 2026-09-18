@@ -1,0 +1,16 @@
+# Global fallback
+* @shabaaspay/security-admins
+
+# High-risk payment execution and tools
+/tools/typescript/packages/agent-toolkit/src/tools/payment-initiations.ts @shabaaspay/payment-leads @shabaaspay/security-admins
+/tools/typescript/packages/agent-toolkit/src/tools/payment-agreements.ts @shabaaspay/payment-leads @shabaaspay/security-admins
+/tools/typescript/packages/agent-toolkit/src/tools/auth.ts @shabaaspay/security-admins
+/tools/typescript/packages/agent-toolkit/src/security/ @shabaaspay/security-admins
+/tools/typescript/packages/agent-toolkit/src/modelcontextprotocol.ts @shabaaspay/security-admins
+
+# OpenAPI contracts
+/openapi/ @shabaaspay/api-owners @shabaaspay/security-admins
+/restapi/ @shabaaspay/api-owners
+
+# Workflows and infrastructure
+/.github/ @shabaaspay/security-admins

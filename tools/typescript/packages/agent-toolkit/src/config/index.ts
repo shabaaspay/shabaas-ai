@@ -12,6 +12,8 @@ export type Config = {
   rateLimitPerHour: number;
   authTokenMaxAgeMinutes: number;
   policyCacheTtlMs: number;
+  readOnly?: boolean;
+  allowUnverifiedWrites?: boolean;
 };
 
 export function getApiUrl(config: Config): string {

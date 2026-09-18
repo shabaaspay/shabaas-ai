@@ -1,0 +1,13 @@
+{
+  "name": "shabaas-ai-root",
+  "private": true,
+  "description": "ShaBaas Pay AI and MCP repository root",
+  "scripts": {
+    "prepare": "husky",
+    "build": "npm run build --prefix tools/typescript",
+    "test:security": "promptfoo eval -c test/promptfooconfig.yaml"
+  },
+  "devDependencies": {
+    "husky": "^9.1.6"
+  }
+}

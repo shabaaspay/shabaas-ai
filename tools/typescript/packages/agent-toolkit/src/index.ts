@@ -3,9 +3,13 @@ import { CANONICAL_PRODUCTION_BASE_URL, CANONICAL_SANDBOX_BASE_URL } from './con
 import type { Config } from './config/index.js';
 import { createAllTools } from './tools/index.js';
 
+declare const process: any;
+
 export type ShabaasAgentToolkitOptions = {
   apiKey: string;
   environment?: 'sandbox' | 'production';
+  readOnly?: boolean;
+  allowUnverifiedWrites?: boolean;
 };
 
 export type ShabaasFunctionTool = {
@@ -15,10 +19,21 @@ export type ShabaasFunctionTool = {
   execute: (args?: Record<string, unknown>) => Promise<unknown>;
 };
 
+function getEnvVar(key: string): string | undefined {
+  if (typeof process !== 'undefined' && (process as any).env) {
+    return (process as any).env[key];
+  }
+  return undefined;
+}
+
 function toToolkitConfig(options: ShabaasAgentToolkitOptions): Config {
   const environment = options.environment ?? 'sandbox';
+  const readOnly = options.readOnly ?? (getEnvVar('SHABAAS_MCP_READ_ONLY') === 'true');
+  const allowUnverifiedWrites = options.allowUnverifiedWrites ?? (getEnvVar('SHABAAS_ALLOW_UNVERIFIED_WRITES') === 'true');
   return {
     environment,
+    readOnly,
+    allowUnverifiedWrites,
     shabaasAuthUuid: options.apiKey,
     sandboxUrl: CANONICAL_SANDBOX_BASE_URL,
     productionUrl: CANONICAL_PRODUCTION_BASE_URL,
@@ -36,6 +51,7 @@ function toToolkitConfig(options: ShabaasAgentToolkitOptions): Config {
 
 export class ShabaasAgentToolkit {
   private readonly apiKey: string;
+  private readonly config: Config;
   private readonly tools: ReturnType<typeof createAllTools>;
 
   constructor(options: ShabaasAgentToolkitOptions) {
@@ -44,18 +60,27 @@ export class ShabaasAgentToolkit {
     }
 
     this.apiKey = options.apiKey;
-    const config = toToolkitConfig(options);
-    const apiClient = new ShabaasApiClient(config);
-    this.tools = createAllTools(apiClient, config);
+    this.config = toToolkitConfig(options);
+    const apiClient = new ShabaasApiClient(this.config);
+    this.tools = createAllTools(apiClient, this.config);
   }
 
-  getTools(): ShabaasFunctionTool[] {
-    return Object.values(this.tools).map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      execute: async (args?: Record<string, unknown>) => tool.execute(args ?? {}, { requestUuid: this.apiKey })
-    }));
+  getConfig(): Readonly<Config> {
+    return this.config;
+  }
+
+  getTools(options?: { readOnlyOnly?: boolean }): ShabaasFunctionTool[] {
+    const isReadOnly = options?.readOnlyOnly ?? this.config.readOnly;
+    const writeToolNames = new Set(['initiate_payment', 'create_payment_agreement']);
+
+    return Object.values(this.tools)
+      .filter((tool) => !isReadOnly || !writeToolNames.has(tool.name))
+      .map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        execute: async (args?: Record<string, unknown>) => tool.execute(args ?? {}, { requestUuid: this.apiKey })
+      }));
   }
 }
 
