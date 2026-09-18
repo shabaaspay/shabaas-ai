@@ -2,7 +2,7 @@
 
 This directory contains the public REST API specification.
 
-- [`Shabaaspay Public API YAML`](./shabaaspay-public-api.yaml) — OpenAPI spec for API reference import.
+- [`ShaBaasPay Public API YAML`](./shabaaspay-public-api.yaml) — OpenAPI spec for API reference import.
 
 Use this file for ReadMe-facing REST documentation updates.
 

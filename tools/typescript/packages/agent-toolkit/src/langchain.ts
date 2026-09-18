@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { ShabaasAgentToolkit, type ShabaasAgentToolkitOptions } from './index.js';
+import { ShaBaasAgentToolkit, type ShaBaasAgentToolkitOptions } from './index.js';
 
-export class ShabaasAgentToolkitLangChain extends ShabaasAgentToolkit {
-  constructor(options: ShabaasAgentToolkitOptions) {
+export class ShaBaasAgentToolkitLangChain extends ShaBaasAgentToolkit {
+  constructor(options: ShaBaasAgentToolkitOptions) {
     super(options);
   }
 
@@ -28,4 +28,8 @@ export class ShabaasAgentToolkitLangChain extends ShabaasAgentToolkit {
     }));
   }
 }
+
+// Backward-compatible alias
+export const ShabaasAgentToolkitLangChain = ShaBaasAgentToolkitLangChain;
+
 

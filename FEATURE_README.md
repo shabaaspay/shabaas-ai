@@ -72,7 +72,7 @@ shabaas-ai/
 - Evaluates the resolved IP address before socket connection:
   - **Blocks**: IPv4 Loopback (`127.0.0.0/8`), Link-Local (`169.254.0.0/16` / Cloud Metadata `169.254.169.254`), Private RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), Carrier-Grade NAT (`100.64.0.0/10`), IPv6 Loopback (`::1`), Link-Local (`fe80::/10`), Unique Local (`fc00::/7`), and IPv4-mapped IPv6 addresses.
 - Enforces `maxRedirects: 0` to prevent DNS rebinding and redirect smuggling attacks.
-- Wired as the sole transport mechanism inside `ShabaasApiClient`.
+- Wired as the sole transport mechanism inside `ShaBaasApiClient`.
 
 ### B. Out-of-Band Intent Binding & Replay Protection (`src/security/`)
 - **Ed25519 Cryptographic Signatures**: In production (`environment: 'production'`), all write tools fail closed unless accompanied by an `intent_token` signed by an authorized human approval service.
@@ -99,9 +99,9 @@ shabaas-ai/
 - If failure rate exceeds 15% across $\ge 20$ transactions, the rail trips to `TRIPPED` status, allowing agents to route around degraded payment infrastructure.
 
 ### E. MCP Service Separation (Read vs Write)
-- **`ShabaasReadMcpServer`**: Mounts only read tools (`get_payment_agreement`, `get_payment_initiation`, `get_payid_status`). Deployed with read-only IAM service account credentials.
-- **`ShabaasWriteMcpServer`**: Mounts only write tools (`initiate_payment`, `create_payment_agreement`, `initiate_direct_debit`, `cancel_payment_agreement`, `create_payid`). Enforces intent token checks and spending limits.
-- **`ShabaasMcpServer`**: Unified server supporting both read and write tools for local development.
+- **`ShaBaasReadMcpServer`**: Mounts only read tools (`get_payment_agreement`, `get_payment_initiation`, `get_payid_status`). Deployed with read-only IAM service account credentials.
+- **`ShaBaasWriteMcpServer`**: Mounts only write tools (`initiate_payment`, `create_payment_agreement`, `initiate_direct_debit`, `cancel_payment_agreement`, `create_payid`). Enforces intent token checks and spending limits.
+- **`ShaBaasMcpServer`**: Unified server supporting both read and write tools for local development.
 
 ### F. Broken Object Level Authorization (BOLA) Defense (`src/tools/read-tools.ts`)
 - Resolves tenant identity from verified session/key claims via `apiClient.getAuthenticatedMerchantId()`.

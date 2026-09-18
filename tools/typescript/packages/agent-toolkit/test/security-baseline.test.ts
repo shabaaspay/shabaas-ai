@@ -12,7 +12,7 @@ import {
 import { checkWritePermission, isWriteTool } from '../dist/security/intent-guard.js';
 import { createReadTools } from '../dist/tools/read-tools.js';
 import { createWriteTools } from '../dist/tools/write-tools.js';
-import { ShabaasApiClient, IdempotencyConflictError } from '../dist/api/client.js';
+import { ShaBaasApiClient, IdempotencyConflictError } from '../dist/api/client.js';
 import { PaymentRailCircuitBreaker } from '../dist/security/circuitBreaker.js';
 import { PostgresNonceStore } from '../dist/security/postgresNonceStore.js';
 import {
@@ -220,7 +220,7 @@ describe('Read-MCP: Tenant-Bound Authorization (BOLA Prevention)', () => {
     policyCacheTtlMs: 300_000
   };
 
-  const apiClient = new ShabaasApiClient(dummyConfig);
+  const apiClient = new ShaBaasApiClient(dummyConfig);
   const readTools = createReadTools(apiClient, dummyConfig);
 
   test('rejects cross-tenant queries when model attempts to access a different merchant_id', async () => {
@@ -412,7 +412,7 @@ describe('Expanded Write Tools Gating (PayTo + BECS Direct Debit + Cancellation)
     policyCacheTtlMs: 300_000
   };
 
-  const apiClient = new ShabaasApiClient(dummyConfig);
+  const apiClient = new ShaBaasApiClient(dummyConfig);
   const writeTools = createWriteTools(apiClient, dummyConfig);
 
   test('identifies all mutating operations as write tools in intent-guard', () => {

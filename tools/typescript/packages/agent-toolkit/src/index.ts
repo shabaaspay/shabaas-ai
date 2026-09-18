@@ -1,18 +1,18 @@
-import { ShabaasApiClient } from './api/client.js';
+import { ShaBaasApiClient } from './api/client.js';
 import { CANONICAL_PRODUCTION_BASE_URL, CANONICAL_SANDBOX_BASE_URL } from './constants/backend-urls.js';
 import type { Config } from './config/index.js';
 import { createAllTools } from './tools/index.js';
 
 declare const process: any;
 
-export type ShabaasAgentToolkitOptions = {
+export type ShaBaasAgentToolkitOptions = {
   apiKey: string;
   environment?: 'sandbox' | 'production';
   readOnly?: boolean;
   allowUnverifiedWrites?: boolean;
 };
 
-export type ShabaasFunctionTool = {
+export type ShaBaasFunctionTool = {
   name: string;
   description: string;
   inputSchema: unknown;
@@ -26,7 +26,7 @@ function getEnvVar(key: string): string | undefined {
   return undefined;
 }
 
-function toToolkitConfig(options: ShabaasAgentToolkitOptions): Config {
+function toToolkitConfig(options: ShaBaasAgentToolkitOptions): Config {
   const environment = options.environment ?? 'sandbox';
   const readOnly = options.readOnly ?? (getEnvVar('SHABAAS_MCP_READ_ONLY') === 'true');
   const allowUnverifiedWrites = options.allowUnverifiedWrites ?? (getEnvVar('SHABAAS_ALLOW_UNVERIFIED_WRITES') === 'true');
@@ -49,19 +49,19 @@ function toToolkitConfig(options: ShabaasAgentToolkitOptions): Config {
   };
 }
 
-export class ShabaasAgentToolkit {
+export class ShaBaasAgentToolkit {
   private readonly apiKey: string;
   private readonly config: Config;
   private readonly tools: ReturnType<typeof createAllTools>;
 
-  constructor(options: ShabaasAgentToolkitOptions) {
+  constructor(options: ShaBaasAgentToolkitOptions) {
     if (!options.apiKey) {
-      throw new Error('ShabaasAgentToolkit requires apiKey');
+      throw new Error('ShaBaasAgentToolkit requires apiKey');
     }
 
     this.apiKey = options.apiKey;
     this.config = toToolkitConfig(options);
-    const apiClient = new ShabaasApiClient(this.config);
+    const apiClient = new ShaBaasApiClient(this.config);
     this.tools = createAllTools(apiClient, this.config);
   }
 
@@ -69,7 +69,7 @@ export class ShabaasAgentToolkit {
     return this.config;
   }
 
-  getTools(options?: { readOnlyOnly?: boolean }): ShabaasFunctionTool[] {
+  getTools(options?: { readOnlyOnly?: boolean }): ShaBaasFunctionTool[] {
     const isReadOnly = options?.readOnlyOnly ?? this.config.readOnly;
     const writeToolNames = new Set(['initiate_payment', 'create_payment_agreement']);
 
@@ -83,6 +83,12 @@ export class ShabaasAgentToolkit {
       }));
   }
 }
+
+// Backward-compatible aliases
+export { ShaBaasAgentToolkit as ShabaasAgentToolkit };
+export type { ShaBaasAgentToolkitOptions as ShabaasAgentToolkitOptions };
+export type { ShaBaasFunctionTool as ShabaasFunctionTool };
+export { ShaBaasApiClient, ShaBaasApiClient as ShabaasApiClient };
 
 export * from './security/index.js';
 export * from './utils/redactor.js';

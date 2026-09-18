@@ -1,4 +1,4 @@
-import { ShabaasApiClient } from '../api/client.js';
+import { ShaBaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { GetPaymentInitiationInputSchema, InitiatePaymentInputSchema, PaymentInitiationSchema } from '../types/index.js';
 import { validateInput } from '../security/validator.js';
@@ -6,7 +6,7 @@ import { verifyWriteIntentAsync } from '../security/intent-guard.js';
 import { validationErrorResponse, toolErrorResponse, type ToolContext } from './response-helpers.js';
 import { enrichPaymentInitiation } from '../enricher/index.js';
 
-export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config: Config) {
+export function createPaymentInitiationTools(apiClient: ShaBaasApiClient, config: Config) {
   return {
     initiate_payment: {
       name: 'initiate_payment',

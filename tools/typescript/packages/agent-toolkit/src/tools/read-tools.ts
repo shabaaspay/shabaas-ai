@@ -1,4 +1,4 @@
-import { ShabaasApiClient } from '../api/client.js';
+import { ShaBaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { createAuthTools } from './auth.js';
 import { createPaymentAgreementTools } from './payment-agreements.js';
@@ -15,7 +15,7 @@ import { redactSensitiveData, enforceResponseSizeLimits } from '../utils/redacto
  * 2. Sensitive Data Redaction: Masks BSBs, account numbers, PayIDs, and tokens before sending to LLM.
  * 3. Strict Export & Size Limits: Caps responses at 50KB with pagination notices.
  */
-export function createReadTools(apiClient: ShabaasApiClient, config: Config) {
+export function createReadTools(apiClient: ShaBaasApiClient, config: Config) {
   const authTools = createAuthTools(apiClient, config);
   const agreementTools = createPaymentAgreementTools(apiClient, config);
   const initiationTools = createPaymentInitiationTools(apiClient, config);

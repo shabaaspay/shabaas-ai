@@ -1,8 +1,8 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { ShabaasAgentToolkit, type ShabaasAgentToolkitOptions } from './index.js';
+import { ShaBaasAgentToolkit, type ShaBaasAgentToolkitOptions } from './index.js';
 
-export class ShabaasAgentToolkitAiSdk extends ShabaasAgentToolkit {
-  constructor(options: ShabaasAgentToolkitOptions) {
+export class ShaBaasAgentToolkitAiSdk extends ShaBaasAgentToolkit {
+  constructor(options: ShaBaasAgentToolkitOptions) {
     super(options);
   }
 
@@ -31,4 +31,8 @@ export class ShabaasAgentToolkitAiSdk extends ShabaasAgentToolkit {
     return Object.fromEntries(entries);
   }
 }
+
+// Backward-compatible alias
+export const ShabaasAgentToolkitAiSdk = ShaBaasAgentToolkitAiSdk;
+
 

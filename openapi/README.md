@@ -2,7 +2,7 @@
 
 This directory contains the MCP-related OpenAPI specification.
 
-- [`Shabaas AI Open API YAML`](./openapi.yaml) — canonical spec for the MCP tools.
+- [`ShaBaas AI Open API YAML`](./openapi.yaml) — canonical spec for the MCP tools.
 
 ## Example (operation mapping)
 

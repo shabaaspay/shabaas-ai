@@ -11,7 +11,7 @@ rules:
           - pattern: console.$LOG(..., <... $OBJ.pay_id ...>, ...)
 
   - id: shabaas-raw-axios-bypass-ssrf
-    message: "Direct instantiation of axios without dial-time DNS SSRF protection detected. Use `createSafeHttpAgents` or `ShabaasApiClient`."
+    message: "Direct instantiation of axios without dial-time DNS SSRF protection detected. Use `createSafeHttpAgents` or `ShaBaasApiClient`."
     languages: [javascript, typescript]
     severity: ERROR
     patterns:

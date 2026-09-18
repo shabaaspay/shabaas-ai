@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { ShabaasApiClient } from '../api/client.js';
+import { ShaBaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { toolErrorResponse, type ToolContext } from './response-helpers.js';
 
-export function createAuthTools(apiClient: ShabaasApiClient, config: Config) {
+export function createAuthTools(apiClient: ShaBaasApiClient, config: Config) {
   return {
     get_auth_token: {
       name: 'get_auth_token',

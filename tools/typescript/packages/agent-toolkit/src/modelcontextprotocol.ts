@@ -1,11 +1,11 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { ShabaasApiClient } from './api/client.js';
+import { ShaBaasApiClient } from './api/client.js';
 import { Config, getApiUrl } from './config/index.js';
 import { CANONICAL_PRODUCTION_BASE_URL, CANONICAL_SANDBOX_BASE_URL } from './constants/backend-urls.js';
 import { createReadTools, createWriteTools, createAllTools, type ToolContext } from './tools/index.js';
-import { ShabaasAgentToolkit, type ShabaasAgentToolkitOptions } from './index.js';
+import { ShaBaasAgentToolkit, type ShaBaasAgentToolkitOptions } from './index.js';
 import {
   mcpSecurityMiddleware,
   validateAndApplyCors,
@@ -24,12 +24,12 @@ export {
 
 export type McpServiceMode = 'read' | 'write' | 'full';
 
-export type ShabaasMcpServerOptions = ShabaasAgentToolkitOptions & {
+export type ShaBaasMcpServerOptions = ShaBaasAgentToolkitOptions & {
   mode?: McpServiceMode;
   allowedOrigins?: string[];
 };
 
-function toMcpConfig(options: ShabaasMcpServerOptions): Config {
+function toMcpConfig(options: ShaBaasMcpServerOptions): Config {
   const environment = options.environment ?? 'sandbox';
   return {
     environment,
@@ -55,18 +55,18 @@ function toMcpConfig(options: ShabaasMcpServerOptions): Config {
  * Exposes only query, search, and bounded reporting tools.
  * Ideal for public registry discovery and unprivileged agent interactions.
  */
-export class ShabaasReadMcpServer {
+export class ShaBaasReadMcpServer {
   private readonly server: Server;
   private readonly tools: ReturnType<typeof createReadTools>;
   private readonly apiKey: string;
 
-  constructor(options: ShabaasAgentToolkitOptions) {
+  constructor(options: ShaBaasAgentToolkitOptions) {
     if (!options.apiKey) {
-      throw new Error('ShabaasReadMcpServer requires apiKey');
+      throw new Error('ShaBaasReadMcpServer requires apiKey');
     }
     this.apiKey = options.apiKey;
     const config = toMcpConfig({ ...options, readOnly: true, mode: 'read' });
-    const apiClient = new ShabaasApiClient(config);
+    const apiClient = new ShaBaasApiClient(config);
     this.tools = createReadTools(apiClient, config);
 
     this.server = new Server(
@@ -110,18 +110,18 @@ export class ShabaasReadMcpServer {
  * Exposes payment initiation and agreement creation tools.
  * Must be deployed with isolated IAM identity and gated by Ed25519 Intent Tokens.
  */
-export class ShabaasWriteMcpServer {
+export class ShaBaasWriteMcpServer {
   private readonly server: Server;
   private readonly tools: ReturnType<typeof createWriteTools>;
   private readonly apiKey: string;
 
-  constructor(options: ShabaasAgentToolkitOptions) {
+  constructor(options: ShaBaasAgentToolkitOptions) {
     if (!options.apiKey) {
-      throw new Error('ShabaasWriteMcpServer requires apiKey');
+      throw new Error('ShaBaasWriteMcpServer requires apiKey');
     }
     this.apiKey = options.apiKey;
     const config = toMcpConfig({ ...options, mode: 'write' });
-    const apiClient = new ShabaasApiClient(config);
+    const apiClient = new ShaBaasApiClient(config);
     this.tools = createWriteTools(apiClient, config);
 
     this.server = new Server(
@@ -164,14 +164,14 @@ export class ShabaasWriteMcpServer {
  * Composite MCP Server for single-service deployments or local development.
  * Supports configurable mode ('read' | 'write' | 'full').
  */
-export class ShabaasMcpServer {
+export class ShaBaasMcpServer {
   private readonly server: Server;
-  private readonly toolkit: ShabaasAgentToolkit;
+  private readonly toolkit: ShaBaasAgentToolkit;
   private readonly mode: McpServiceMode;
 
-  constructor(options: ShabaasMcpServerOptions) {
+  constructor(options: ShaBaasMcpServerOptions) {
     this.mode = options.mode ?? (options.readOnly ? 'read' : 'full');
-    this.toolkit = new ShabaasAgentToolkit({
+    this.toolkit = new ShaBaasAgentToolkit({
       ...options,
       readOnly: this.mode === 'read' || options.readOnly
     });
@@ -217,5 +217,10 @@ export class ShabaasMcpServer {
 }
 
 // Backward-compatible aliases
-export const StdioMcpServer = ShabaasMcpServer;
-export const HttpMcpServer = ShabaasMcpServer;
+export const ShabaasReadMcpServer = ShaBaasReadMcpServer;
+export const ShabaasWriteMcpServer = ShaBaasWriteMcpServer;
+export const ShabaasMcpServer = ShaBaasMcpServer;
+export type ShabaasMcpServerOptions = ShaBaasMcpServerOptions;
+export const StdioMcpServer = ShaBaasMcpServer;
+export const HttpMcpServer = ShaBaasMcpServer;
+

@@ -27,7 +27,7 @@ export class IdempotencyConflictError extends Error {
 const tokenCache = new Map<string, { token: string; fetchedAt: number }>();
 const CACHE_TTL_MS = 50 * 60 * 1000;
 
-export class ShabaasApiClient {
+export class ShaBaasApiClient {
   private client: AxiosInstance;
   private config: Config;
 
@@ -36,7 +36,7 @@ export class ShabaasApiClient {
     const { httpAgent, httpsAgent } = createSafeHttpAgents();
     this.client = axios.create({
       baseURL: getApiUrl(config),
-      headers: { 'Content-Type': 'application/json', 'X-Shabaas-Client': 'mcp' },
+      headers: { 'Content-Type': 'application/json', 'X-ShaBaas-Client': 'mcp' },
       httpAgent,
       httpsAgent,
       maxRedirects: 0,
@@ -246,3 +246,5 @@ export class ShabaasApiClient {
     }, options);
   }
 }
+
+export { ShaBaasApiClient as ShabaasApiClient };

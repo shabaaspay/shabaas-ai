@@ -19,9 +19,9 @@ npm install @shabaaspay/agent-toolkit
 The library needs to be configured with your account's API key, available in the [ShaBaas Developer Dashboard](https://docs.shabaas.com/dashboard). We strongly recommend using a restricted API key for better security and granular permissions. Tool availability is determined by the permissions configured for that key.
 
 ```ts
-import { ShabaasAgentToolkit } from '@shabaaspay/agent-toolkit';
+import { ShaBaasAgentToolkit } from '@shabaaspay/agent-toolkit';
 
-const toolkit = new ShabaasAgentToolkit({
+const toolkit = new ShaBaasAgentToolkit({
   apiKey: process.env.SHABAAS_API_KEY!,
   environment: 'sandbox'
 });
@@ -43,9 +43,9 @@ const result = await getAuthTokenTool?.execute({
 ## LangChain
 
 ```ts
-import { ShabaasAgentToolkitLangChain } from '@shabaaspay/agent-toolkit/langchain';
+import { ShaBaasAgentToolkitLangChain } from '@shabaaspay/agent-toolkit/langchain';
 
-const toolkit = new ShabaasAgentToolkitLangChain({
+const toolkit = new ShaBaasAgentToolkitLangChain({
   apiKey: process.env.SHABAAS_API_KEY!,
   environment: 'sandbox'
 });
@@ -56,10 +56,10 @@ const tools = await toolkit.getLangChainTools();
 ## Vercel AI SDK
 
 ```ts
-import { ShabaasAgentToolkitAiSdk } from '@shabaaspay/agent-toolkit/ai-sdk';
+import { ShaBaasAgentToolkitAiSdk } from '@shabaaspay/agent-toolkit/ai-sdk';
 import { generateText } from 'ai';
 
-const toolkit = new ShabaasAgentToolkitAiSdk({
+const toolkit = new ShaBaasAgentToolkitAiSdk({
   apiKey: process.env.SHABAAS_API_KEY!,
   environment: 'sandbox'
 });

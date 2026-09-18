@@ -1,4 +1,4 @@
-import { ShabaasApiClient } from '../api/client.js';
+import { ShaBaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { createPaymentAgreementTools } from './payment-agreements.js';
 import { createPaymentInitiationTools } from './payment-initiations.js';
@@ -25,7 +25,7 @@ export interface WriteToolsOptions {
  * with separate IAM credentials, audit logging, Ed25519 intent gating, and velocity spending limits.
  */
 export function createWriteTools(
-  apiClient: ShabaasApiClient,
+  apiClient: ShaBaasApiClient,
   config: Config,
   options?: WriteToolsOptions
 ) {

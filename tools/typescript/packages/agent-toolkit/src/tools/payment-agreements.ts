@@ -1,4 +1,4 @@
-import { ShabaasApiClient } from '../api/client.js';
+import { ShaBaasApiClient } from '../api/client.js';
 import { enrichPaymentAgreement } from '../enricher/index.js';
 import { GetPaymentAgreementInputSchema, CreatePaymentAgreementInputSchema, PaymentAgreementSchema } from '../types/index.js';
 import { validateInput } from '../security/validator.js';
@@ -6,7 +6,7 @@ import { verifyWriteIntentAsync } from '../security/intent-guard.js';
 import { Config } from '../config/index.js';
 import { validationErrorResponse, toolErrorResponse, type ToolContext } from './response-helpers.js';
 
-export function createPaymentAgreementTools(apiClient: ShabaasApiClient, config: Config) {
+export function createPaymentAgreementTools(apiClient: ShaBaasApiClient, config: Config) {
   return {
     get_payment_agreement: {
       name: 'get_payment_agreement',

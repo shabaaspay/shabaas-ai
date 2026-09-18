@@ -65,7 +65,7 @@ export function validateAndApplyCors(
     setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     setHeader(
       'Access-Control-Allow-Headers',
-      'Authorization, Content-Type, Accept, X-Shabaas-Client, Idempotency-Key'
+      'Authorization, Content-Type, Accept, X-ShaBaas-Client, X-Shabaas-Client, Idempotency-Key'
     );
     setHeader('Access-Control-Max-Age', '86400');
     setHeader('Vary', 'Origin');
