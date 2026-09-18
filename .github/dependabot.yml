@@ -1,0 +1,48 @@
+# Dependabot configuration for ShaBaas Pay repositories
+# Scans npm dependencies and GitHub Actions workflows weekly for security and version updates.
+
+version: 2
+updates:
+  # Monitor npm dependencies in tools/typescript
+  - package-ecosystem: "npm"
+    directory: "/tools/typescript"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Australia/Sydney"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "shabaaspay/security-admins"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Monitor root npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Australia/Sydney"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "shabaaspay/security-admins"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Monitor GitHub Actions workflows for pinned action updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Australia/Sydney"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "shabaaspay/security-admins"
+    commit-message:
+      prefix: "ci(actions)"

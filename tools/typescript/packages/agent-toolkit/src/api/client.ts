@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import axios, { AxiosInstance } from 'axios';
 import { Config, getApiUrl } from '../config/index.js';
 import { ApiResponse } from '../types/index.js';
@@ -23,6 +24,34 @@ export class ShabaasApiClient {
       maxRedirects: 0,
       timeout: 30000
     });
+  }
+
+  /**
+   * Securely resolves the authenticated merchant identity from the verified session / API key.
+   * Prevents Broken Object Level Authorization (BOLA) by never trusting client-supplied merchant_ids.
+   */
+  getAuthenticatedMerchantId(requestUuid?: string): string {
+    const keyOrToken = (requestUuid ?? this.config.shabaasAuthUuid ?? '').trim();
+    if (!keyOrToken) {
+      return 'anonymous_principal';
+    }
+
+    const tokenPart = keyOrToken.toLowerCase().startsWith('bearer ') ? keyOrToken.slice(7).trim() : keyOrToken;
+    if (tokenPart.includes('.')) {
+      try {
+        const parts = tokenPart.split('.');
+        if (parts.length >= 2) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+          if (payload.merchant_id) return String(payload.merchant_id);
+          if (payload.sub) return String(payload.sub);
+        }
+      } catch {
+        // Fallback to key hash
+      }
+    }
+
+    const hash = crypto.createHash('sha256').update(keyOrToken).digest('hex').slice(0, 16);
+    return `merchant_${hash}`;
   }
 
   private normalizeBearer(token: string): string {

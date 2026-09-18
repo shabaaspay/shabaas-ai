@@ -6,11 +6,27 @@ import { Config, getApiUrl } from './config/index.js';
 import { CANONICAL_PRODUCTION_BASE_URL, CANONICAL_SANDBOX_BASE_URL } from './constants/backend-urls.js';
 import { createReadTools, createWriteTools, createAllTools, type ToolContext } from './tools/index.js';
 import { ShabaasAgentToolkit, type ShabaasAgentToolkitOptions } from './index.js';
+import {
+  mcpSecurityMiddleware,
+  validateAndApplyCors,
+  STANDARD_SECURITY_HEADERS,
+  SSE_SECURITY_HEADERS,
+  type CorsValidationResult
+} from './utils/securityHeaders.js';
+
+export {
+  mcpSecurityMiddleware,
+  validateAndApplyCors,
+  STANDARD_SECURITY_HEADERS,
+  SSE_SECURITY_HEADERS,
+  type CorsValidationResult
+};
 
 export type McpServiceMode = 'read' | 'write' | 'full';
 
 export type ShabaasMcpServerOptions = ShabaasAgentToolkitOptions & {
   mode?: McpServiceMode;
+  allowedOrigins?: string[];
 };
 
 function toMcpConfig(options: ShabaasMcpServerOptions): Config {
