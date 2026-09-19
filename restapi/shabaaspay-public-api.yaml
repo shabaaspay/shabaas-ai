@@ -5,6 +5,9 @@ info:
   description: |
     Describes public REST endpoints for authorization, payment agreements, payment initiations,
     webhooks, invoice generation, and PayID collection APIs.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
   - url: https://dev-api.shabaas.com
     description: Staging
@@ -12,17 +15,24 @@ servers:
     description: Production
 tags:
   - name: Authorization
+    description: Authentication and bearer token issuance
   - name: Payment Agreements
+    description: PayTo agreement creation, retrieval, and lifecycle management
   - name: Payment Initiations
+    description: PayTo and Direct Debit payment execution
   - name: Webhooks
+    description: Webhook endpoint registration and query
   - name: PayID Collections
+    description: Inbound PayID collection and resolution
   - name: Invoices
+    description: Invoice generation and checkout flows
 security:
   - BearerAuth: []
 paths:
   /api/public/authorization:
     post:
       tags: [Authorization]
+      operationId: exchangeAuthToken
       summary: Exchange API key for bearer token
       description: |
         Obtain a bearer token for subsequent authenticated PayTo requests. Tokens are valid for 24 hours.
@@ -66,6 +76,7 @@ paths:
   /api/public/payment_agreement:
     get:
       tags: [Payment Agreements]
+      operationId: getPaymentAgreement
       summary: Get payment agreement
       description: |
         Retrieve a payment agreement by `id` (payment_agreement_id).
@@ -110,6 +121,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Agreements]
+      operationId: createPaymentAgreement
       summary: Create payment agreement
       description: Create a PayTo payment agreement.
       parameters:
@@ -244,6 +256,7 @@ paths:
   /api/public/payment_agreement/resend:
     patch:
       tags: [Payment Agreements]
+      operationId: resendPaymentAgreement
       summary: Resend payment agreement authorization request
       parameters:
         - in: header
@@ -339,6 +352,7 @@ paths:
   /api/public/payment_agreement/bilateral:
     patch:
       tags: [Payment Agreements]
+      operationId: updateBilateralPaymentAgreement
       summary: Bilateral amend payment agreement
       parameters:
         - in: header
@@ -421,6 +435,7 @@ paths:
   /api/public/payment_agreement/cancel:
     delete:
       tags: [Payment Agreements]
+      operationId: cancelPaymentAgreement
       summary: Cancel payment agreement
       parameters:
         - in: query
@@ -476,6 +491,7 @@ paths:
   /api/public/payment_agreement/one_time:
     post:
       tags: [Payment Agreements]
+      operationId: createOneTimePaymentAgreement
       summary: Create one-time payment agreement
       parameters:
         - in: header
@@ -538,6 +554,7 @@ paths:
   /api/public/generate_invoice:
     post:
       tags: [Invoices]
+      operationId: generateInvoice
       summary: Generate invoice checkout URL
       security: []
       requestBody:
@@ -587,6 +604,7 @@ paths:
   /api/public/payment_initiation:
     get:
       tags: [Payment Initiations]
+      operationId: getPaymentInitiation
       summary: Get payment initiation
       description: Retrieve a payment initiation by `id` (payment_initiation_id).
       parameters:
@@ -630,6 +648,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Initiations]
+      operationId: initiatePayment
       summary: Initiate payment
       description: |
         Initiate a payment against an active payment agreement.
@@ -766,6 +785,7 @@ paths:
   /api/public/payment_initiation/direct_debit:
     post:
       tags: [Payment Initiations]
+      operationId: initiateDirectDebitPayment
       summary: Initiate direct debit payment
       parameters:
         - in: header
@@ -841,6 +861,7 @@ paths:
   /api/public/webhooks:
     post:
       tags: [Webhooks]
+      operationId: setWebhookEndpoints
       summary: Create or update webhook endpoints
       requestBody:
         required: true
@@ -863,6 +884,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
       tags: [Webhooks]
+      operationId: getWebhookEndpoints
       summary: Get webhook endpoints
       responses:
         '200':
@@ -887,6 +909,7 @@ paths:
   /v1/collections/payid:
     post:
       tags: [PayID Collections]
+      operationId: createPayIdCollection
       summary: Create inbound PayID collection
       security:
         - ApiKeyAuth: []
@@ -952,6 +975,7 @@ paths:
   /v1/collections/payid/status:
     get:
       tags: [PayID Collections]
+      operationId: getPayIdStatus
       summary: Get inbound PayID status
       security:
         - ApiKeyAuth: []

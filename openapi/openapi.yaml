@@ -4,6 +4,9 @@ info:
   version: 1.0.0
   description: |
     OpenAPI source for the ShaBaas AI agent.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
   - url: https://dev-api.shabaas.com
     description: Staging
@@ -11,15 +14,20 @@ servers:
     description: Production
 tags:
   - name: Authorization
+    description: Authentication and bearer token issuance
   - name: Payment Agreements
+    description: PayTo agreement creation, retrieval, and lifecycle management
   - name: Payment Initiations
+    description: PayTo and Direct Debit payment execution
   - name: PayID
+    description: Inbound PayID collection and resolution
 security:
   - BearerAuth: []
 paths:
   /api/public/authorization:
     post:
       tags: [Authorization]
+      operationId: get_auth_token
       x-mcp-tool: get_auth_token
       summary: Exchange API key for bearer token
       description: |
@@ -64,6 +72,7 @@ paths:
   /api/public/payment_agreement:
     get:
       tags: [Payment Agreements]
+      operationId: get_payment_agreement
       x-mcp-tool: get_payment_agreement
       summary: Get payment agreement
       description: |
@@ -109,6 +118,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Agreements]
+      operationId: create_payment_agreement
       x-mcp-tool: create_payment_agreement
       summary: Create payment agreement
       description: Used by MCP tool `create_payment_agreement`.
@@ -265,6 +275,7 @@ paths:
   /api/public/payment_initiation:
     get:
       tags: [Payment Initiations]
+      operationId: get_payment_initiation
       x-mcp-tool: get_payment_initiation
       summary: Get payment initiation
       description: Used by MCP tool `get_payment_initiation`.
@@ -309,6 +320,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [Payment Initiations]
+      operationId: initiate_payment
       x-mcp-tool: initiate_payment
       summary: Initiate payment
       description: |
@@ -467,6 +479,7 @@ paths:
   /api/public/payment_initiation/direct_debit:
     post:
       tags: [Payment Initiations]
+      operationId: initiate_direct_debit
       x-mcp-tool: initiate_direct_debit
       summary: Initiate direct debit payment
       description: Used by MCP tool `initiate_direct_debit`.
@@ -540,6 +553,7 @@ paths:
   /api/public/payment_agreement/bilateral:
     patch:
       tags: [Payment Agreements]
+      operationId: update_bilateral_agreement
       x-mcp-tool: update_bilateral_agreement
       summary: Bilateral amend payment agreement
       description: Used by MCP tool `update_bilateral_agreement`.
@@ -616,6 +630,7 @@ paths:
   /api/public/payment_agreement/resend:
     patch:
       tags: [Payment Agreements]
+      operationId: resend_payment_agreement
       x-mcp-tool: resend_payment_agreement
       summary: Resend payment agreement authorization request
       description: Used by MCP tool `resend_payment_agreement`.
@@ -686,6 +701,7 @@ paths:
   /api/public/payment_agreement/cancel:
     delete:
       tags: [Payment Agreements]
+      operationId: cancel_payment_agreement
       x-mcp-tool: cancel_payment_agreement
       summary: Cancel payment agreement
       description: Used by MCP tool `cancel_payment_agreement`.
@@ -744,6 +760,7 @@ paths:
   /v1/collections/payid:
     post:
       tags: [PayID]
+      operationId: create_payid
       x-mcp-tool: create_payid
       summary: Create incoming PayID
       description: Used by MCP tool `create_payid`.
@@ -805,6 +822,7 @@ paths:
   /v1/collections/payid/status:
     get:
       tags: [PayID]
+      operationId: get_payid_status
       x-mcp-tool: get_payid_status
       summary: Check PayID collection status
       description: Used by MCP tool `get_payid_status`.
@@ -846,6 +864,7 @@ paths:
   /api/public/generate_invoice:
     post:
       tags: [Payment Agreements]
+      operationId: generate_invoice
       x-mcp-tool: generate_invoice
       summary: Generate invoice checkout URL
       description: Used by MCP tool `generate_invoice`.
@@ -1022,15 +1041,9 @@ components:
         end_date:
           type: string
           format: date
-      allOf:
-        - if:
-            properties:
-              type:
-                const: bsb
-          then:
-            required: [bsb, account_number]
-          else:
-            required: [pay_id]
+      oneOf:
+        - required: [bsb, account_number]
+        - required: [pay_id]
 
     PaymentInitiation:
       type: object
