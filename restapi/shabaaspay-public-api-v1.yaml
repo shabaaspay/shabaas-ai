@@ -706,6 +706,8 @@ paths:
       description: |
         Retrieve a payment initiation by `id` (payment_initiation_id).
 
+        Status values: [Payment Initiation Status Values](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values).
+
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
