@@ -11,14 +11,32 @@ It contains SDKs and integration assets to connect ShaBaasPay with LLMs and agen
 - [`@shabaaspay/agent-toolkit`](https://github.com/shabaaspay/shabaas-ai/tree/main/tools/typescript/packages/agent-toolkit) - for integrating ShaBaasPay APIs with popular agent frameworks through function calling (TypeScript).
 - API artifacts: MCP contract under `openapi/`, public REST spec for ReadMe under `restapi/`.
 
+## Start in the self-serve staging environment
+
+1. [Create an account](https://www.shabaas.com/signup) with email and password, Google or GitHub. Your account opens in the staging dashboard.
+2. For a dashboard trial, select **Create Invoice**, enter the details and share the resulting payment-page link. The optional email flow sends the link to the customer.
+3. For an API trial, create an API key in the dashboard and [exchange it for a bearer token](https://shabaaspay-pay.readme.io/reference/post_api-public-authorization). Keep the key and token server-side.
+
+```bash
+# Set SHABAAS_API_KEY securely in your shell first.
+curl -X POST 'https://dev-api.shabaas.com/api/public/authorization' \
+  -H "Authorization: ${SHABAAS_API_KEY}"
+```
+
+Use the resulting bearer token for supported endpoints, following the [REST OpenAPI specification](./restapi/shabaaspay-public-api.yaml) and [API reference](https://shabaaspay-pay.readme.io/reference). An API response is not proof of payment settlement. Production access requires onboarding and approval for the intended use case.
+
+**Implementation references:** [payment initiation statuses](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values) · [PayTo payment errors](https://shabaaspay-pay.readme.io/reference/payto-payment-error-codes) · [PayTo agreement errors](https://shabaaspay-pay.readme.io/reference/payto-agreement-error-codes) · [webhook notification examples](https://shabaaspay-pay.readme.io/reference/webhook-notification-management).
+
 ## Model Context Protocol (MCP)
 
 ShaBaasPay supports MCP integrations for agent clients.
 
 Remote MCP endpoints:
 
-- Staging: `https://mcp-staging.shabaas.com/mcp`
-- Production: `https://mcp.shabaas.com/mcp`
+- Staging (sandbox evaluation): `https://mcp-staging.shabaas.com/mcp`
+- Production (approved access): `https://mcp.shabaas.com/mcp`
+
+See the [MCP connection guide](https://docs.shabaas.com/developer) for client setup and the currently advertised hosted tool list. The local toolkit, OpenAPI contract and deployed endpoint may expose different inventories; verify the tool list for the environment and credentials in use.
 
 Local toolkit and MCP examples are available below and in `tools/typescript/packages/agent-toolkit/README.md`.
 
@@ -144,7 +162,7 @@ npm run build
 ## OpenAPI
 
 - [`OpenAPI`](./openapi/README.md)
-- Includes MCP OpenAPI coverage for the toolkit tools: auth, payment agreement (create/get), and payment initiation (create/get).
+- The MCP contract maps eight operations: authorization; PayTo agreement create/get/amend; payment initiation create/get; direct debit initiation; and invoice generation. The published connection guide may list additional hosted tools. Confirm deployed availability before describing any tool as supported.
 
 
 ## REST API 
