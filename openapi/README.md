@@ -2,7 +2,9 @@
 
 This directory contains the MCP-related OpenAPI specification.
 
-- [`Shabaas AI Open API YAML`](./openapi.yaml) — canonical spec for the MCP tools.
+- [`Shabaas AI Open API YAML`](./openapi.yaml) — contract mapping of REST operations to MCP tool names.
+
+The current contract marks eight operations with `x-mcp-tool`: `get_auth_token`, `create_payment_agreement`, `get_payment_agreement`, `initiate_payment`, `get_payment_initiation`, `initiate_direct_debit`, `update_bilateral_agreement`, and `generate_invoice`. This contract is not a live inventory of the hosted endpoint. Check the [connection guide](https://docs.shabaas.com/developer) and the server's advertised tools for the selected environment and permissions. The guide currently also lists `get_todays_earnings`, which is not mapped in this YAML; reconcile that difference before claiming complete tool coverage.
 
 ## Example (operation mapping)
 
