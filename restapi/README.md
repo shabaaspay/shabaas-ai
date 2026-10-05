@@ -15,12 +15,16 @@ Use this file for ReadMe-facing REST documentation updates.
 - PayID Collections (create, status)
 - Invoice generation
 
-## Example request (token)
+## Start with a staging API key
+
+[Sign up](https://www.shabaas.com/signup) and create an API key in the staging dashboard. Keep it server-side. The API-key exchange returns a bearer token for subsequent supported requests; follow the [authorization reference](https://shabaaspay-pay.readme.io/reference/post_api-public-authorization).
 
 ```bash
-curl -X POST "https://api.shabaas.com/api/public/authorization" \
-  -H "Authorization: sbp_live_xxx"
+curl -X POST "https://dev-api.shabaas.com/api/public/authorization" \
+  -H "Authorization: ${SHABAAS_API_KEY}"
 ```
+
+The remaining examples use the production hostname and require approved production access. Replace the hostname with `dev-api.shabaas.com` when testing a supported staging workflow. Do not send live credentials to staging or stage credentials to production.
 
 ## Example request (create payment agreement)
 
@@ -151,3 +155,12 @@ curl -X POST "https://api.shabaas.com/api/v1/collections/payid" \
   }
 }
 ```
+
+## Implementation references
+
+- [Payment initiation status values](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values)
+- [PayTo payment error codes](https://shabaaspay-pay.readme.io/reference/payto-payment-error-codes)
+- [PayTo agreement error codes and HTTP responses](https://shabaaspay-pay.readme.io/reference/payto-agreement-error-codes)
+- [Webhook notification examples](https://shabaaspay-pay.readme.io/reference/webhook-notification-management)
+
+Webhook authentication and delivery behaviour must be confirmed against the current integration documentation; the linked notification page supplies examples, not a signature-verification contract.
