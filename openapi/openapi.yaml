@@ -95,8 +95,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
                 not_found:
+                  summary: Payment agreement not found (PAM_SB_PAG_NOT_FOUND_ERROR)
                   value:
-                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    message: Payment agreement not found
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
@@ -206,7 +207,7 @@ paths:
                       field: frequency
                       stored_codes: [ADHO, DAIL, FRTN, INDA, MIAN, MNTH, QURT, WEEK, YEAR]
                       aliases: { DAILY: DAIL, ADHOC: ADHO }
-                monoova_payee:
+                payee_cannot_receive_npp:
                   summary: Payee cannot receive NPP (example)
                   value:
                     message: Payee account cannot receive NPP Payments
@@ -322,8 +323,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
                 agreement_missing:
+                  summary: Payment agreement not found (PAM_SB_PAG_NOT_FOUND_ERROR)
                   value:
-                    message: MONOOVA-monoova.PAM_SB_PAG_NOT_FOUND_ERROR
+                    message: Payment agreement not found
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
@@ -341,30 +343,30 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
                 agreement_inactive:
-                  summary: Agreement exists but is not active
+                  summary: Agreement exists but is not active (PAS_AGREEMENT_STATUS_INACTIVE)
                   value:
-                    message: MONOOVA-monoova.PAS_AGREEMENT_STATUS_INACTIVE
+                    message: Payment agreement is not active
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
                 cooldown:
-                  summary: Too soon vs recent initiation (example code)
+                  summary: Too soon vs recent initiation (R804)
                   value:
-                    message: MONOOVA-monoova.R804
+                    message: A recent payment already exists for this agreement
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
                 amount_limit:
-                  summary: Amount exceeds agreement or per-tx cap (example)
+                  summary: Amount exceeds agreement or per-tx cap (R101)
                   value:
-                    message: MONOOVA-monoova.R101
+                    message: Amount exceeds the allowed limit
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
-                monoova_failed:
-                  summary: Initiation failed at scheme (representative)
+                initiation_failed:
+                  summary: Initiation failed at scheme (R803)
                   value:
-                    message: MONOOVA-monoova.R803
+                    message: Payment initiation failed
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
