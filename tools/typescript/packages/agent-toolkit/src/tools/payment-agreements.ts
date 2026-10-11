@@ -46,7 +46,7 @@ export function createPaymentAgreementTools(apiClient: ShabaasApiClient, config:
         const validation = validateInput(CreatePaymentAgreementInputSchema, args);
         if (!validation.success) return validationErrorResponse(validation.errors ?? [], config.environment);
         try {
-          const { enrich: _enrich = true, include_raw = false, ...payload } = validation.data as any;
+          const { enrich: _enrich = true, include_raw = false, authorization: _authorization, ...payload } = validation.data as any;
           const response = await apiClient.createPaymentAgreement(payload, { requestUuid: context?.requestUuid });
           return {
             success: true,
@@ -69,4 +69,5 @@ export function createPaymentAgreementTools(apiClient: ShabaasApiClient, config:
     }
   };
 }
+
 

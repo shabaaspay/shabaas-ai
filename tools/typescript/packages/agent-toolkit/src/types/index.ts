@@ -88,23 +88,31 @@ export const GetPaymentAgreementInputSchema = z.object({
   include_raw: z.boolean().optional().default(false)
 });
 
-export const CreatePaymentAgreementInputSchema = z.object({
-  authorization: authorizationParam,
-  name: z.string(),
-  type: z.string(),
-  maximum_amount: z.string(),
-  frequency: z.string(),
-  number_of_transactions_permitted: z.number(),
-  pay_id: z.string(),
-  phone_number: z.string().optional(),
-  bsb: z.number().optional(),
-  account_number: z.number().optional(),
-  agreement_type: z.string().optional(),
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
-  enrich: z.boolean().optional().default(true),
-  include_raw: z.boolean().optional().default(false)
+const bankIdentifier = z.union([z.string().trim().min(1), z.number().int().positive()]);
+const agreementFields = {
+  name: z.string().trim().min(1), maximum_amount: z.string().trim().min(1),
+  frequency: z.string().trim().min(1), number_of_transactions_permitted: z.number().int().positive(),
+  phone_number: z.string().optional(), agreement_type: z.string().optional(),
+  start_date: z.string().optional(), end_date: z.string().optional()
+};
+const bankAgreement = z.object({
+  ...agreementFields, type: z.literal('bsb'), bsb: bankIdentifier,
+  account_number: bankIdentifier, pay_id: z.string().trim().min(1).optional()
 });
+const payIdAgreement = z.object({
+  ...agreementFields,
+  type: z.string().trim().min(1).refine(type => type !== 'bsb', 'Use the bank-account schema for type bsb'),
+  pay_id: z.string().trim().min(1), bsb: bankIdentifier.optional(), account_number: bankIdentifier.optional()
+});
+// Invalid bank requests are rejected before authentication or HTTP.
+export const CreatePaymentAgreementRequestSchema = z.union([bankAgreement, payIdAgreement]);
+const agreementToolOptions = {
+  authorization: authorizationParam,
+  enrich: z.boolean().optional().default(true), include_raw: z.boolean().optional().default(false)
+};
+export const CreatePaymentAgreementInputSchema = z.union([
+  bankAgreement.extend(agreementToolOptions), payIdAgreement.extend(agreementToolOptions)
+]);
 
 export const InitiatePaymentInputSchema = z.object({
   authorization: authorizationParam,
@@ -130,4 +138,5 @@ export const GetAuthTokenInputSchema = z.object({
   authorization: authorizationParam,
   include_token_in_response: z.boolean().optional().default(false)
 });
+
 

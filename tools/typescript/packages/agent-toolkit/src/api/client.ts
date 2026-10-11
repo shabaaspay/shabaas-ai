@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { Config, getApiUrl } from '../config/index.js';
-import { ApiResponse } from '../types/index.js';
+import { ApiResponse, CreatePaymentAgreementRequestSchema } from '../types/index.js';
 
 export type RequestAuthOptions = { requestUuid?: string };
 
@@ -77,8 +77,10 @@ export class ShabaasApiClient {
   }
 
   async createPaymentAgreement(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    const validated = CreatePaymentAgreementRequestSchema.safeParse(data);
+    if (!validated.success) throw new Error('Invalid payment agreement input; provide the required PayID or BSB/account fields');
     return this.withAuthRetry(async (token) => {
-      const response = await this.client.post('/api/public/payment_agreement', { payment_agreement: data }, {
+      const response = await this.client.post('/api/public/payment_agreement', { payment_agreement: validated.data }, {
         headers: { Authorization: token }
       });
       return response.data;
@@ -104,4 +106,5 @@ export class ShabaasApiClient {
     }, options?.requestUuid);
   }
 }
+
 

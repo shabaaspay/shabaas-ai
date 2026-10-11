@@ -160,6 +160,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '400':
+          description: Missing or invalid payer fields rejected by the upstream provider (including name, PayID or bank details).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
           content:
@@ -828,7 +834,6 @@ components:
         - maximum_amount
         - frequency
         - number_of_transactions_permitted
-        - pay_id
       properties:
         phone_number:
           type: string
@@ -865,6 +870,16 @@ components:
         end_date:
           type: string
           format: date
+      oneOf:
+        - required: [bsb, account_number]
+          properties:
+            type:
+              enum: [bsb]
+        - required: [pay_id]
+          properties:
+            type:
+              not:
+                enum: [bsb]
 
     ResendPaymentAgreementRequest:
       type: object
@@ -1163,3 +1178,4 @@ components:
               type: number
             received_amount:
               type: number
+
