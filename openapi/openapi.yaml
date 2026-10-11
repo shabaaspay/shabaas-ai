@@ -160,6 +160,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessPaymentAgreementResponse'
+        '400':
+          description: Missing or invalid payer fields rejected by the upstream provider (including name, PayID or bank details).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
           content:
@@ -633,15 +639,16 @@ components:
         end_date:
           type: string
           format: date
-      allOf:
-        - if:
-            properties:
-              type:
-                const: bsb
-          then:
-            required: [bsb, account_number]
-          else:
-            required: [pay_id]
+      oneOf:
+        - required: [bsb, account_number]
+          properties:
+            type:
+              enum: [bsb]
+        - required: [pay_id]
+          properties:
+            type:
+              not:
+                enum: [bsb]
 
     PaymentInitiation:
       type: object
@@ -769,3 +776,4 @@ components:
       type: object
       additionalProperties: true
       description: Optional destination payload used by direct debit flow.
+
