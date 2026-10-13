@@ -41,5 +41,6 @@ jobs:
         with:
           name: dependency-audit-${{ github.run_id }}-${{ github.run_attempt }}
           path: .security-reports/
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn

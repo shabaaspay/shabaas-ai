@@ -6,6 +6,21 @@ audit = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(audit)
 
 class GateTests(unittest.TestCase):
+    def test_dependency_free_workspace_root_is_still_audited(self):
+        self.assertTrue(audit.has_npm_scope({'workspaces':['packages/*']}))
+        self.assertFalse(audit.has_npm_scope({'name':'no-deps'}))
+
+    def test_berry_audits_exact_versions_and_rejects_unreviewed_sources(self):
+        lock={'app@workspace:.':{'resolution':'app@workspace:.','dependencies':{'lib':'^1.0.0'}}, 'lib@npm:^1.0.0':{'resolution':'lib@npm:1.0.1','version':'1.0.1'}}
+        package={'name':'app','dependencies':{'lib':'^1.0.0'}}
+        self.assertEqual(audit.berry_packages(lock,package,{})[0],{'lib':['1.0.1']})
+        lock['foreign']={'resolution':'native@https://git.invalid/repo','version':'1.0.0'}
+        with self.assertRaises(ValueError): audit.berry_packages(lock,package,{})
+    def test_berry_blocks_high_and_rejects_incomplete_evidence(self):
+        data={'lib':[{'id':1,'url':'https://advisory.invalid/1','vulnerable_versions':'<1.0.2','severity':'critical'}]}
+        self.assertEqual(audit.berry_advisories(data,{'lib':['1.0.1']})['critical'],1)
+        with self.assertRaises(ValueError): audit.berry_advisories({'lib':[{'id':1}]},{'lib':['1.0.1']})
+
     def test_npm_high_and_critical_block(self):
         for counts in ({'high':1,'critical':0}, {'high':0,'critical':1}):
             self.assertEqual(audit.npm_result(1, {'metadata':{'vulnerabilities':counts}})[0], 'FINDINGS')

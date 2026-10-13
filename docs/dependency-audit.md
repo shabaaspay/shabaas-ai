@@ -6,7 +6,7 @@ This repository's feature branch introduces the **Dependency audit** check. The 
 | --- | --- |
 | tools/typescript/package.json | npm |
 
-npm audits the committed lock tree, including development dependencies and workspaces, and fails on HIGH/CRITICAL. Yarn uses the committed dependency tree with the same severity threshold; Classic's severity-bitmask exit code is interpreted explicitly. Python and Ruby fail on any known advisory because comparable severity is not consistently provided by their native reports. That is stricter than the npm threshold. All tools fail closed on unavailable/malformed reports or missing required lockfiles. npm also checks manifest/lock consistency. New tracked dependency manifests require explicit coverage and cannot silently bypass auditing.
+npm audits the committed lock tree, including development dependencies and workspaces, and fails on HIGH/CRITICAL. Yarn uses the committed dependency tree with the same severity threshold; Berry locks are parsed with PyYAML 6.0.3 and exact registry versions are queried against npm's Bulk Advisory endpoint because the old CLI's Quick Audit endpoint rejects the request; Classic's severity-bitmask exit code is interpreted explicitly. Python and Ruby fail on any known advisory because comparable severity is not consistently provided by their native reports. That is stricter than the npm threshold. All tools fail closed on unavailable/malformed reports or missing required lockfiles. npm also checks manifest/lock consistency. New tracked dependency manifests require explicit coverage and cannot silently bypass auditing.
 
 This gate does not start the application, execute package lifecycle scripts, invoke payment tests, access production, deploy, send messages or use application secrets. Registry/advisory queries transmit package names and versions. Requirements without exact pins audit the resolution obtained on the runner, not a verified deployed environment. Runtime OS/image packages and native Android/iOS libraries are outside this dependency-manifest gate; existing container scanning remains in place where available.
 
@@ -20,3 +20,7 @@ The self-contained runner and failure-policy tests are stored in `.github/script
 
 The connected GitHub integration returned HTTP 403 for branch-protection inspection, so merge-blocking enforcement has **not** been verified or changed. Automatic CI execution is implemented; branch-rule enforcement and post-merge scheduling remain pending human review. Do not mark the rollout closed until those controls and current scan evidence are verified.
 
+
+## Rollout verification refinements
+
+The uploader explicitly includes the hidden report directory. Workspace roots are audited even when dependencies are declared only in child packages; manifest/lock consistency is checked for those packages. Twelve policy regression tests cover severity gates, scanner failures, missing coverage, workspace-only dependencies and Berry lock/advisory parsing.

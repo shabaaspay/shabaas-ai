@@ -1,12 +1,18 @@
 """Dependency gates: nonzero on findings, missing coverage, or scanner failure."""
 import fnmatch
 import json
+import hashlib
+import re
+import urllib.request
 import os
 from pathlib import Path
 import subprocess
 import sys
 
 FIELDS = ('dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies')
+
+def has_npm_scope(package):
+    return bool(package.get('workspaces') or any(package.get(field) for field in FIELDS))
 
 def npm_result(code, data):
     if not isinstance(data, dict) or data.get('error') or not isinstance(data.get('metadata', {}).get('vulnerabilities'), dict):
@@ -34,6 +40,57 @@ def yarn_classic_result(code, output):
     if bool(code & 24) != blocked:
         raise ValueError('Yarn severity/exit-code mismatch')
     return 'FINDINGS' if blocked else 'PASS', counts
+
+def berry_packages(lock, package, exclusions):
+    root = lock.get(package['name'] + '@workspace:.')
+    declared = {}
+    for field in ('dependencies', 'devDependencies', 'optionalDependencies'):
+        declared.update(package.get(field, {}))
+    if not isinstance(root, dict) or root.get('dependencies', {}) != declared:
+        raise ValueError('Berry workspace manifest and lockfile disagree')
+    packages = {}
+    excluded = []
+    for key, item in lock.items():
+        if key == '__metadata':
+            continue
+        resolution = item.get('resolution', '')
+        if '@workspace:' in resolution:
+            continue
+        match = re.match(r'^(.+?)@(npm|patch):', resolution)
+        if not match:
+            name_match = re.match(r'^(@[^/]+/[^@]+|[^@]+)@', resolution)
+            name = name_match.group(1) if name_match else 'unknown-source'
+            exemption = exclusions.get(name, {})
+            if exemption.get('resolution_sha256') == hashlib.sha256(resolution.encode()).hexdigest() and exemption.get('reason'):
+                excluded.append({'package': name, 'reason': exemption['reason']})
+                continue
+            raise ValueError('Unverified non-registry Yarn source: ' + name)
+        if match.group(2) == 'patch' and '@npm%3A' not in resolution and '@npm:' not in resolution:
+            raise ValueError('Yarn patch is not based on a registry package')
+        name = match.group(1)
+        version = item.get('version', '')
+        if not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.+-]+)?', version):
+            raise ValueError('Invalid registry package version in Yarn lock')
+        packages.setdefault(name, set()).add(version)
+    local_names = {item.get('resolution', '').split('@workspace:')[0] for key, item in lock.items() if key != '__metadata' and '@workspace:' in item.get('resolution', '')}
+    missing = set(declared) - set(packages) - local_names - {item['package'] for item in excluded}
+    if missing:
+        raise ValueError('Unresolved Yarn root dependency: ' + ', '.join(sorted(missing)))
+    return {name: sorted(versions) for name, versions in packages.items()}, excluded
+
+def berry_advisories(data, packages):
+    if not isinstance(data, dict):
+        raise ValueError('Malformed npm bulk advisory response')
+    counts = {level: 0 for level in ('info', 'low', 'moderate', 'high', 'critical')}
+    for name, entries in data.items():
+        if name not in packages or not isinstance(entries, list):
+            raise ValueError('Unexpected npm advisory package')
+        for entry in entries:
+            severity = entry.get('severity')
+            if severity not in counts or not entry.get('id') or not entry.get('url') or not entry.get('vulnerable_versions') or ('name' in entry and entry['name'] != name) or ('module_name' in entry and entry['module_name'] != name):
+                raise ValueError('Incomplete npm advisory evidence')
+            counts[severity] += 1
+    return counts
 
 def coverage(config, tracked):
     covered = set(config.get('covered_manifests', []))
@@ -78,7 +135,7 @@ def main():
             directory = path.parent
             if kind == 'npm':
                 package = json.loads(path.read_text())
-                if not any(package.get(field) for field in FIELDS):
+                if not has_npm_scope(package):
                     results.append({'scope': manifest, 'status': 'NOT_APPLICABLE', 'reason': 'No declared npm dependencies'})
                     continue
                 lock = directory / 'package-lock.json'
@@ -103,7 +160,12 @@ def main():
                     for field in FIELDS:
                         if (declared.get(field) or {}) != (locked.get(field) or {}):
                             raise ValueError('Workspace manifest and lockfile disagree: ' + child)
-                code, raw = run(['npm', 'audit', '--package-lock-only', '--include=dev', '--audit-level=high', '--json', '--fetch-retries=1', '--fetch-timeout=30000'], directory, report)
+                command = ['npm', 'audit', '--package-lock-only', '--include=dev', '--audit-level=high', '--json', '--fetch-retries=1', '--fetch-timeout=30000']
+                if package.get('workspaces'):
+                    if package['workspaces'] != lock_root.get('workspaces'):
+                        raise ValueError('Workspace configuration and lockfile disagree')
+                    command += ['--workspaces', '--include-workspace-root']
+                code, raw = run(command, directory, report)
                 status, counts = npm_result(code, json.loads(raw))
                 result = {'scope': manifest, 'status': status, 'counts': counts}
             elif kind == 'yarn-classic':
@@ -113,21 +175,17 @@ def main():
                 status, counts = yarn_classic_result(code, raw)
                 result = {'scope': manifest, 'status': status, 'counts': counts}
             elif kind == 'yarn-modern':
-                rc = directory / '.yarnrc.yml'
-                if rc.is_file() and any(key in rc.read_text() for key in ('npmAuditExcludePackages', 'npmAuditIgnoreAdvisories')):
-                    raise ValueError('Audit exclusions are not allowed in the Yarn configuration')
-                if not (directory / 'yarn.lock').is_file():
+                import yaml
+                lock = directory / 'yarn.lock'
+                if not lock.is_file():
                     raise ValueError('Missing yarn.lock')
-                code, raw = run(['yarn', 'npm', 'audit', '--all', '--recursive', '--severity', 'high', '--json'], directory, report)
-                if code == 0:
-                    result = {'scope': manifest, 'status': 'PASS'}
-                elif code == 1 and raw.strip() and 'severity' in raw:
-                    parsed = [json.loads(line) for line in raw.splitlines() if line.strip()]
-                    if not parsed:
-                        raise ValueError('Empty Yarn audit report')
-                    result = {'scope': manifest, 'status': 'FINDINGS'}
-                else:
-                    raise ValueError('Yarn audit failed without verified advisory evidence')
+                packages, excluded = berry_packages(yaml.safe_load(lock.read_text()), json.loads(path.read_text()), config.get('yarn_nonregistry_exclusions', {}))
+                request = urllib.request.Request('https://registry.npmjs.org/-/npm/v1/security/advisories/bulk', data=json.dumps(packages).encode(), headers={'Content-Type': 'application/json', 'Accept': 'application/json'}, method='POST')
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    data = json.load(response)
+                counts = berry_advisories(data, packages)
+                report.write_text(json.dumps({'packages_audited': len(packages), 'counts': counts, 'advisories': data, 'non_registry_exclusions': excluded}, indent=2))
+                result = {'scope': manifest, 'status': 'FINDINGS' if counts['high'] + counts['critical'] else 'PASS', 'counts': counts, 'packages_audited': len(packages), 'excluded_native_sources': len(excluded)}
             elif kind == 'python':
                 code, raw = run([sys.executable, '-m', 'pip_audit', '--strict', '-r', str(path), '--format', 'json', '--progress-spinner', 'off', '--desc', 'off'], directory, report)
                 data = json.loads(raw)
