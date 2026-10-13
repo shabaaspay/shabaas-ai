@@ -1,0 +1,46 @@
+name: Dependency audit
+
+on:
+  push:
+    branches: ['main', 'feature/**']
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  schedule:
+    - cron: '44 20 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+jobs:
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Validate audit failure and coverage rules
+        run: python3 -m unittest discover -s .github/scripts -p 'test_dependency_audit.py'
+      - name: Enforce dependency policy
+        env:
+          npm_config_ignore_scripts: 'true'
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+        run: python3 .github/scripts/dependency_audit.py
+      - name: Retain audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .security-reports/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: warn
