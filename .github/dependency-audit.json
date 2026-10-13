@@ -1,0 +1,13 @@
+{
+  "covered_manifests": [
+    "tools/typescript/package.json",
+    "tools/typescript/packages/agent-toolkit/package.json"
+  ],
+  "excluded_manifests": {},
+  "targets": [
+    {
+      "manifest": "tools/typescript/package.json",
+      "kind": "npm"
+    }
+  ]
+}
