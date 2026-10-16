@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Describes public REST endpoints for authorization, payment agreements, payment initiations,
-    webhooks, and PayID collection APIs.
+    refunds, webhooks, and PayID collection APIs.
 servers:
   - url: https://dev-api.shabaas.com
     description: Staging
@@ -19,7 +19,7 @@ tags:
     description: Create, retrieve, amend, resend, and cancel PayTo payment agreements.
   - name: Payment Initiation
     x-displayName: Payment Initiation
-    description: Create and retrieve payment initiations linked to active agreements.
+    description: Create and retrieve payment initiations, and refund a settled payment that belongs to the authenticated merchant.
   - name: Checkout
     x-displayName: Checkout
     description: Generate checkout and pay links for web checkout flows.
@@ -706,6 +706,8 @@ paths:
       description: |
         Retrieve a payment initiation by `id` (payment_initiation_id).
 
+        The response includes `refund_amount` and `refunds`. Use this call to see whether a `Pending` refund later became `Ok` or `Failed`. `refunds` is an empty array when the payment has no refunds.
+
         Status values: [Payment Initiation Status Values](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values).
 
         ### Error Codes
@@ -738,6 +740,28 @@ paths:
                       status: inpr
                       transfer: null
                       created_at: "2026-04-28T13:30:00.000Z"
+                with_refund:
+                  summary: Payment that has a completed refund
+                  value:
+                    message: Success
+                    data:
+                      payment_initiation_id: "12345PI1714316400"
+                      settled: true
+                      status: return_complete
+                      transfer: transferred
+                      created_at: "2026-04-28T13:30:00.000Z"
+                      split_percentage_fee: null
+                      refund_amount: "1.0"
+                      refunds:
+                        - id: 41
+                          amount: "1.0"
+                          status: Ok
+                          notes: Customer requested a refund
+                          created_at: "2026-04-28T15:00:00.000Z"
+                          completed_at: null
+                          transaction_id: "90010001"
+                          failure_code: null
+                          failure_message: null
         '401':
           description: Invalid or missing bearer token.
           content:
@@ -937,6 +961,246 @@ paths:
                     error_code: GN-0000
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
+
+  /api/public/payment_initiation/refund:
+    post:
+      tags: [Payment Initiation]
+      summary: Refund a settled payment
+      operationId: refundPaymentInitiation
+      description: |
+        Refund part or all of a settled payment that belongs to the authenticated merchant.
+        Send the bearer token from `POST /api/public/authorization`. Do not send the raw API key.
+        No `Location` header is required.
+
+        Generate a new `Idempotency-Key` for each refund attempt, for example a UUID.
+        Sending the same key again for this payment returns the original refund and does not pay the customer again, even if `amount` is different.
+        A second partial refund needs a new key. Using the same key on a different payment returns `409`.
+        A failed refund stays tied to that key. To try again, send a new key.
+
+        `amount` is the dollars to send to the customer. It can be less than the remaining balance.
+        The payment must already be settled. `acsc` with `settled: false` is not refundable yet.
+        The payer must still have a saved BSB or PayID. Inbound PayID, destination, bookkeeper, settlement, and redeem rows are refused.
+
+        `Ok` means the refund completed on this response. `Pending` means it is still in progress: poll `GET /api/public/payment_initiation` and read `refunds`.
+        `Failed` is returned as an error. `refund_amount` is the total of `Ok` and `Pending` refunds.
+
+        Developer credits are checked only outside production, and only for a developer merchant when credit limits are configured.
+        One credit is taken after a new `Ok` or `Pending` result. A replay and a `Failed` result do not take a credit.
+
+        ### Error Codes
+        | Code | Status | Reason | What to do |
+        | ---- | ------ | ------ | ---------- |
+        | GN-0000 | 422 | `Idempotency-Key` is missing | Send a client-generated key, such as a UUID. |
+        | GN-0000 | 404 | Payment initiation not found for this merchant | Use a `payment_initiation_id` owned by the token's merchant. |
+        | PI-0003 | 422 | Amount is zero or negative | Send a positive dollar amount. |
+        | PI-0002 | 422 | Payment cannot be refunded, or the amount is above the remainder | Confirm the payment is settled, has no destination, and the payer still has an account. Lower the amount to the remainder. |
+        | GN-0000 | 422 | Already refunded | The full payment amount is already reserved by `Ok` and `Pending` refunds. |
+        | GN-0000 | 422 | Refund wallet not found | The merchant ledger wallet is missing. |
+        | GN-0000 | 422 | Not enough balance to refund | Retry later. The platform balance does not cover this amount. |
+        | GN-0000 | 409 | This key was already used for a different payment | Send a new `Idempotency-Key`. |
+        | GN-0000 | 402 | Developer credits exhausted | Non-production only. Top up credits and retry with the same key only if no refund row was created. |
+        | Provider code | 422 | The scheme rejected the refund | Read `message` and `error_code`. Retry only with a new `Idempotency-Key`. |
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: |
+            Client-generated label for this refund attempt. A UUID is suitable.
+            The same value on the same payment returns the stored refund and does not send money again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+            examples:
+              partial:
+                summary: Partial refund
+                value:
+                  payment_initiation:
+                    payment_initiation_id: "12345PI1714316400"
+                    amount: "1.00"
+                    notes: Customer requested a refund
+              remainder:
+                summary: Refund the remaining amount
+                value:
+                  payment_initiation:
+                    payment_initiation_id: "12345PI1714316400"
+                    amount: "10.00"
+      responses:
+        '200':
+          description: |
+            Refund completed (`Ok`) or accepted and still in progress (`Pending`).
+            Repeating the same `Idempotency-Key` also returns `200` with the original refund.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessRefundResponse'
+              examples:
+                completed:
+                  summary: Refund paid immediately
+                  value:
+                    message: Success
+                    data:
+                      payment_initiation_id: "12345PI1714316400"
+                      status: return_complete
+                      created_at: "2026-04-28T13:45:00.000Z"
+                      settled: true
+                      transfer: transferred
+                      split_percentage_fee: null
+                      refund_amount: "1.0"
+                      refunds:
+                        - id: 41
+                          amount: "1.0"
+                          status: Ok
+                          notes: Customer requested a refund
+                          created_at: "2026-04-28T15:00:00.000Z"
+                          completed_at: null
+                          transaction_id: "90010001"
+                          failure_code: null
+                          failure_message: null
+                      refund:
+                        id: 41
+                        amount: "1.0"
+                        status: Ok
+                        notes: Customer requested a refund
+                        created_at: "2026-04-28T15:00:00.000Z"
+                        completed_at: null
+                        transaction_id: "90010001"
+                        failure_code: null
+                        failure_message: null
+                pending:
+                  summary: Refund accepted and still in progress
+                  value:
+                    message: Success
+                    data:
+                      payment_initiation_id: "12345PI1714316400"
+                      status: return_in_progress
+                      created_at: "2026-04-28T13:45:00.000Z"
+                      settled: true
+                      transfer: transferred
+                      split_percentage_fee: null
+                      refund_amount: "1.0"
+                      refunds:
+                        - id: 42
+                          amount: "1.0"
+                          status: Pending
+                          notes: Customer requested a refund
+                          created_at: "2026-04-28T15:05:00.000Z"
+                          completed_at: null
+                          transaction_id: null
+                          failure_code: null
+                          failure_message: null
+                      refund:
+                        id: 42
+                        amount: "1.0"
+                        status: Pending
+                        notes: Customer requested a refund
+                        created_at: "2026-04-28T15:05:00.000Z"
+                        completed_at: null
+                        transaction_id: null
+                        failure_code: null
+                        failure_message: null
+        '401':
+          description: Invalid or missing bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Authorization failed
+                  value:
+                    message: Unauthorized Access to an operation
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+        '402':
+          description: Developer credit balance is insufficient. Applies only outside production.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                developer_credits:
+                  summary: Non-production credits exhausted
+                  value:
+                    message: Developer credits exhausted
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+        '404':
+          description: Payment initiation was not found for this merchant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  summary: Unknown id or another merchant's payment
+                  value:
+                    message: Payment Initiation not found
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+        '409':
+          description: This Idempotency-Key already belongs to a different payment for this merchant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                key_conflict:
+                  summary: Key reused on another payment
+                  value:
+                    message: Idempotency-Key was already used for a different payment
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+        '422':
+          description: The refund was refused or the scheme rejected it. The same key will not try the payment again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_key:
+                  summary: Idempotency-Key header omitted
+                  value:
+                    message: Idempotency-Key is required
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+                invalid_amount:
+                  summary: Amount is zero or negative
+                  value:
+                    message: Invalid amount for refund
+                    error_code: PI-0003
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+                not_refundable:
+                  summary: Unsettled, ineligible, or amount above the remainder
+                  value:
+                    message: Payment Initiation cannot be refunded
+                    error_code: PI-0002
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+                already_refunded:
+                  summary: Nothing remains to refund
+                  value:
+                    message: Already refunded
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
+                scheme_rejected:
+                  summary: Scheme rejected the refund
+                  value:
+                    message: Refund failed
+                    error_code: GN-0000
+                    data:
+                      response_time: "2026-04-28T15:00:00.000Z"
 
   /api/public/payment_initiation/direct_debit:
     post:
@@ -1921,6 +2185,103 @@ components:
             Bookkeeper retain percentage when set (greater than 0 and less than 100).
             Retained share stays on the business ledger for end-of-day transfer.
           example: 20
+        refund_amount:
+          type: string
+          nullable: true
+          description: |
+            Total of `Ok` and `Pending` refunds reserved against this payment.
+            Null when no refund has reserved an amount.
+          example: "1.0"
+        refunds:
+          type: array
+          description: Refunds for this payment, oldest first. Empty when none exist.
+          items:
+            $ref: '#/components/schemas/Refund'
+
+    Refund:
+      type: object
+      description: One refund of a payment initiation.
+      properties:
+        id:
+          type: integer
+          description: Refund row id.
+          example: 41
+        amount:
+          type: string
+          description: Dollars sent, or reserved, for this refund.
+          example: "1.0"
+        status:
+          type: string
+          description: "`Ok` is paid. `Pending` is still in progress. `Failed` did not pay the customer."
+          example: Ok
+        notes:
+          type: string
+          nullable: true
+          description: Caller-supplied reason. Scheme errors are not stored here.
+          example: Customer requested a refund
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-28T15:00:00.000Z"
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Reserved timestamp. Currently null even when status is `Ok`.
+          example: null
+        transaction_id:
+          type: string
+          nullable: true
+          description: Scheme transaction id once the refund is accepted.
+          example: "90010001"
+        failure_code:
+          type: string
+          nullable: true
+          description: Scheme failure code. Null on `Ok` and `Pending`.
+        failure_message:
+          type: string
+          nullable: true
+          description: Scheme failure message. Null on `Ok` and `Pending`.
+
+    CreateRefundRequest:
+      type: object
+      required: [payment_initiation]
+      properties:
+        payment_initiation:
+          type: object
+          required: [payment_initiation_id, amount]
+          properties:
+            payment_initiation_id:
+              type: string
+              description: Settled payment initiation that belongs to the authenticated merchant.
+              example: "12345PI1714316400"
+            amount:
+              oneOf:
+                - type: string
+                - type: number
+              description: Dollars to refund. May be a partial amount up to the remainder.
+              example: "1.00"
+            notes:
+              type: string
+              description: Optional reason stored on the refund.
+              example: Customer requested a refund
+
+    SuccessRefundResponse:
+      type: object
+      description: |
+        Payment initiation envelope plus the refund created or replayed by this call.
+        `data.refund` is that one refund. `data.refunds` lists every refund on the payment.
+      properties:
+        message:
+          type: string
+          example: Success
+        data:
+          allOf:
+            - $ref: '#/components/schemas/PaymentInitiation'
+            - type: object
+              properties:
+                refund:
+                  $ref: '#/components/schemas/Refund'
 
     SuccessPaymentInitiationResponse:
       type: object
