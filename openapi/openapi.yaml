@@ -266,6 +266,14 @@ paths:
       summary: Initiate payment
       description: |
         Used by MCP tool `initiate_payment`.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Required for enrolled strict merchants and all new MCP/toolkit initiation calls. Persist per business payment and reuse after timeouts; never use a fresh key for an uncertain outcome.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9._:-]{16,128}$'
       requestBody:
         required: true
         content:
@@ -680,6 +688,11 @@ components:
       type: object
       required: [payment_agreement_id, amount]
       properties:
+        merchant_reference:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Stable business payment identity; required for strict enrolled merchants and MCP/toolkit calls. A fresh key cannot charge the same reference twice.
         payment_agreement_id:
           type: string
         amount:
@@ -769,3 +782,4 @@ components:
       type: object
       additionalProperties: true
       description: Optional destination payload used by direct debit flow.
+

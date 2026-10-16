@@ -1,3 +1,4 @@
+import { GetPaymentOperationInputSchema, GetPaymentEventsInputSchema } from '../types/index.js';
 import { ShabaasApiClient } from '../api/client.js';
 import { Config } from '../config/index.js';
 import { GetPaymentInitiationInputSchema, InitiatePaymentInputSchema, PaymentInitiationSchema } from '../types/index.js';
@@ -7,6 +8,26 @@ import { enrichPaymentInitiation } from '../enricher/index.js';
 
 export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config: Config) {
   return {
+    get_payment_operation: {
+      name: 'get_payment_operation', description: 'Recover the original payment outcome; never create a fresh key after a timeout.',
+      inputSchema: GetPaymentOperationInputSchema,
+      execute: async (args: any, context?: ToolContext) => {
+        const parsed = GetPaymentOperationInputSchema.safeParse(args);
+        if (!parsed.success) return validationErrorResponse(parsed.error.issues.map(issue => issue.message), config.environment);
+        try { return { success: true, data: (await apiClient.getPaymentOperation(parsed.data.operation_id, { requestUuid: context?.requestUuid })).data }; }
+        catch (error: any) { return toolErrorResponse(error.message, config.environment); }
+      },
+    },
+    get_payment_events: {
+      name: 'get_payment_events', description: 'Read authenticated merchant payment events. Persist the cursor only with successful processing.',
+      inputSchema: GetPaymentEventsInputSchema,
+      execute: async (args: any, context?: ToolContext) => {
+        const parsed = GetPaymentEventsInputSchema.safeParse(args);
+        if (!parsed.success) return validationErrorResponse(parsed.error.issues.map(issue => issue.message), config.environment);
+        try { return { success: true, data: (await apiClient.getPaymentEvents(parsed.data.cursor, { requestUuid: context?.requestUuid })).data }; }
+        catch (error: any) { return toolErrorResponse(error.message, config.environment); }
+      },
+    },
     initiate_payment: {
       name: 'initiate_payment',
       description: 'Initiate a payment against an existing payment agreement.',
@@ -16,15 +37,16 @@ export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config
         if (!validation.success) return validationErrorResponse(validation.errors ?? [], config.environment);
         try {
           const start = Date.now();
-          const { enrich = true, include_raw = false, authorization: _auth, description, notes, ...rest } =
+          const { enrich = true, include_raw = false, authorization: _auth, description, notes, idempotency_key, ...rest } =
             validation.data as any;
           const noteText = notes ?? description;
           const payload = {
             payment_agreement_id: rest.payment_agreement_id,
             amount: rest.amount,
+            merchant_reference: rest.merchant_reference,
             ...(noteText !== undefined && noteText !== '' ? { notes: noteText } : {})
           };
-          const response = await apiClient.initiatePayment(payload, { requestUuid: context?.requestUuid });
+          const response = await apiClient.initiatePayment(payload, { requestUuid: context?.requestUuid, idempotencyKey: idempotency_key });
           if (!enrich) {
             return {
               success: true,
@@ -76,4 +98,5 @@ export function createPaymentInitiationTools(apiClient: ShabaasApiClient, config
     }
   };
 }
+
 

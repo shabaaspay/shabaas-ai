@@ -59,3 +59,7 @@ export class ShabaasAgentToolkit {
   }
 }
 
+
+
+export { verifyPaymentWebhook } from './security/payment-webhook.js';
+export type { PaymentEvent } from './security/payment-webhook.js';
