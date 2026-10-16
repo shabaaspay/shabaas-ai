@@ -42,3 +42,7 @@ Use `get_payment_operation` after uncertain creation and `get_payment_events` fo
 `verifyPaymentWebhook` is a Node helper (raw Buffer, signature/timestamp/event headers, accepted key-ID→secret map, expected merchant/environment). It rejects body tampering, old/future timestamps, unknown keys and scope mismatches without relying on Authorization. It deliberately does not acknowledge, deduplicate, fulfil orders or store cursors: the receiving application must commit its event ledger and business effects transactionally before acknowledgement. Do not use JSON middleware ahead of raw-body capture. Accept only configured key IDs and retire revoked secrets through trusted configuration.
 
 Run `npm test` in the MCP root, or `npm test -w @shabaaspay/agent-toolkit` from shabaas-ai/tools/typescript. Tests use synthetic data and local mock adapters; they do not call a bank. Match all enabled entry points, including Cloudflare, in sandbox integration tests before release.
+
+## Dependency verification
+
+The review also updates the affected dependency trees (including Axios, MCP SDK and vulnerable transitive packages) and runs npm audit in CI alongside payment contracts. Use the audited lockfile and Node 22. Workspace overrides do not propagate into an external application's dependency tree; consumers must audit their own resolved dependencies. The existing Docker vulnerability gate remains in place. A clean dependency scan does not close OAuth application controls or any payment acceptance gate.

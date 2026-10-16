@@ -19,4 +19,5 @@ jobs:
           cache: npm
           cache-dependency-path: tools/typescript/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=low
       - run: npm test -w @shabaaspay/agent-toolkit
