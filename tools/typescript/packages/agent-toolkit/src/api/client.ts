@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Config, getApiUrl } from '../config/index.js';
 import { ApiResponse } from '../types/index.js';
 
-export type RequestAuthOptions = { requestUuid?: string };
+export type RequestAuthOptions = { requestUuid?: string; idempotencyKey?: string };
 
 const tokenCache = new Map<string, { token: string; fetchedAt: number }>();
 const CACHE_TTL_MS = 50 * 60 * 1000;
@@ -86,11 +86,28 @@ export class ShabaasApiClient {
   }
 
   async initiatePayment(data: any, options?: RequestAuthOptions): Promise<ApiResponse> {
+    if (typeof data.merchant_reference !== 'string' || !data.merchant_reference.trim() || data.merchant_reference.length > 128) throw new Error('A stable merchant reference is required');
+    if (!/^\d+(?:\.\d{1,2})?$/.test(String(data.amount)) || !Number.isFinite(Number(data.amount)) || Number(data.amount) <= 0) throw new Error('Invalid payment amount');
+    if (!options?.idempotencyKey || !/^[A-Za-z0-9._:-]{16,128}$/.test(options.idempotencyKey)) throw new Error('A persisted idempotency key is required');
     return this.withAuthRetry(async (token) => {
       const response = await this.client.post('/api/public/payment_initiation', { payment_initiation: data }, {
-        headers: { Authorization: token },
+        headers: { Authorization: token, 'Idempotency-Key': options.idempotencyKey },
         timeout: 65000
       });
+      return response.data;
+    }, options?.requestUuid);
+  }
+
+  async getPaymentOperation(id: string, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token) => {
+      const response = await this.client.get(`/api/public/payment_operations/${encodeURIComponent(id)}`, { headers: { Authorization: token } });
+      return response.data;
+    }, options?.requestUuid);
+  }
+
+  async getPaymentEvents(cursor?: string, options?: RequestAuthOptions): Promise<ApiResponse> {
+    return this.withAuthRetry(async (token) => {
+      const response = await this.client.get('/api/public/payment_events', { params: { cursor }, headers: { Authorization: token } });
       return response.data;
     }, options?.requestUuid);
   }
@@ -104,4 +121,5 @@ export class ShabaasApiClient {
     }, options?.requestUuid);
   }
 }
+
 

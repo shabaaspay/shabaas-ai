@@ -107,9 +107,13 @@ export const CreatePaymentAgreementInputSchema = z.object({
 });
 
 export const InitiatePaymentInputSchema = z.object({
+  idempotency_key: z.string().regex(/^[A-Za-z0-9._:-]{16,128}$/)
+    .describe('Persist once per business payment. Reuse after timeout/retry; never generate a new key for an uncertain outcome.'),
+  merchant_reference: z.string().min(1).max(128)
+    .describe('Stable unique business payment reference, retained with the idempotency key.'),
   authorization: authorizationParam,
   payment_agreement_id: z.string(),
-  amount: z.union([z.string(), z.number()]).refine((val) => Number(val) > 0, 'Amount must be greater than zero'),
+  amount: z.union([z.string(), z.number()]).refine(val => /^\d+(?:\.\d{1,2})?$/.test(String(val)) && Number.isFinite(Number(val)) && Number(val) > 0, 'Amount must be a positive decimal with at most two decimal places'),
   notes: z.string().optional().describe('Sent to API as payment_initiation.notes'),
   description: z
     .string()
@@ -131,3 +135,13 @@ export const GetAuthTokenInputSchema = z.object({
   include_token_in_response: z.boolean().optional().default(false)
 });
 
+
+
+export const GetPaymentOperationInputSchema = z.object({
+  authorization: authorizationParam,
+  operation_id: z.string().regex(/^op_[A-Za-z0-9-]+$/),
+});
+export const GetPaymentEventsInputSchema = z.object({
+  authorization: authorizationParam,
+  cursor: z.string().max(4096).optional(),
+});
