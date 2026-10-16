@@ -970,19 +970,14 @@ paths:
       description: |
         Refund part or all of a settled payment that belongs to the authenticated merchant.
         Send the bearer token from `POST /api/public/authorization`. Do not send the raw API key.
-        No `Location` header is required.
 
         Generate a new `Idempotency-Key` for each refund attempt, for example a UUID.
         Sending the same key again for this payment returns the original refund and does not pay the customer again, even if `amount` is different.
         A second partial refund needs a new key. Using the same key on a different payment returns `409`.
         A failed refund stays tied to that key. To try again, send a new key.
 
-        `amount` is the dollars to send to the customer. It can be less than the remaining balance.
         The payment must already be settled. `acsc` with `settled: false` is not refundable yet.
         The payer must still have a saved BSB or PayID. Inbound PayID, destination, bookkeeper, settlement, and redeem rows are refused.
-
-        `Ok` means the refund completed on this response. `Pending` means it is still in progress: poll `GET /api/public/payment_initiation` and read `refunds`.
-        `Failed` is returned as an error. `refund_amount` is the total of `Ok` and `Pending` refunds.
 
         Developer credits are checked only outside production, and only for a developer merchant when credit limits are configured.
         One credit is taken after a new `Ok` or `Pending` result. A replay and a `Failed` result do not take a credit.
