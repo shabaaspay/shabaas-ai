@@ -79,6 +79,8 @@ curl -X GET "https://api.shabaas.com/api/public/payment_agreement?id=3652PA20260
 
 ## Example request (initiate payment)
 
+`Idempotency-Key` and `merchant_reference` are optional.
+
 ```bash
 curl -X POST "https://api.shabaas.com/api/public/payment_initiation" \
   -H "Authorization: Bearer <token>" \
@@ -88,6 +90,23 @@ curl -X POST "https://api.shabaas.com/api/public/payment_initiation" \
       "payment_agreement_id": "3652PA20260308123221550",
       "amount": "10.00",
       "notes": "Invoice 1042"
+    }
+  }'
+```
+
+The same call with an optional retry key and merchant reference:
+
+```bash
+curl -X POST "https://api.shabaas.com/api/public/payment_initiation" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: payment-invoice-4201-v1" \
+  -d '{
+    "payment_initiation": {
+      "payment_agreement_id": "3652PA20260308123221550",
+      "amount": "50.00",
+      "merchant_reference": "invoice-4201",
+      "notes": "Invoice 4201"
     }
   }'
 ```

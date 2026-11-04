@@ -810,6 +810,8 @@ paths:
       description: |
         Initiate a payment against an active payment agreement.
 
+        `Idempotency-Key` and `merchant_reference` are optional.
+
         ### Error Codes
         | Code | Status | Reason | What to do |
         | ---- | ------ | ------ | ---------- |
@@ -827,8 +829,24 @@ paths:
         | R803 | 422 | Upstream initiation failed | Retry; if persistent, contact support with request metadata. |
         | PAS_NPP_GATEWAY_ERROR | 502 | Provider gateway returned an error | Retry with backoff; contact support if repeated. |
         | PAS_NPP_GATEWAY_TIMEOUT | 504 | Provider gateway timeout | Retry request and check status afterwards. |
-        | R805 | 200 | Upstream timeout with accepted processing state | Poll status using get endpoint until terminal state. |
+        | R805 | 200 | Upstream timeout with accepted processing state | Poll status using get endpoint until terminal state. A request without `Idempotency-Key` keeps this result. |
+        | invalid_idempotency_key | 400 | `Idempotency-Key` is present but has the wrong shape | Use 16 to 128 characters: letters, numbers, `.`, `_`, `:`, or `-`. |
+        | idempotency_conflict | 409 | This key was already used for a different request body | Repeat the original body, or send a new key for a new payment. |
+        | — | 202 | Payment result is not known yet | Reuse the same `Idempotency-Key` and `merchant_reference`. Do not create a new payment. |
         | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]{16,128}$'
+          description: |
+            Optional retry identity. Leave this header out to use the existing payment path.
+            When sent, persist it and reuse the same value with the same body.
+          example: payment-invoice-4201-v1
       requestBody:
         required: true
         content:
@@ -852,6 +870,14 @@ paths:
                     payment_agreement_id: "3652PA20260408123221550"
                     amount: 10
                     notes: Invoice 1042
+              with_idempotency:
+                summary: Optional key and merchant reference
+                value:
+                  payment_initiation:
+                    payment_agreement_id: "3652PA20260408123221550"
+                    amount: "50.00"
+                    merchant_reference: invoice-4201
+                    notes: Invoice 4201
       responses:
         '200':
           description: Payment initiation created successfully (or accepted for processing).
@@ -879,6 +905,35 @@ paths:
                       settled: false
                       status: accp
                       transfer: null
+                      created_at: "2026-04-28T13:45:00.000Z"
+        '202':
+          description: |
+            The payment result is not known yet. Returned only when `Idempotency-Key` was sent.
+            `Retry-After` is 5 seconds. Repeat the same key and body. Do not create a new payment.
+          headers:
+            Retry-After:
+              schema:
+                type: string
+              description: Seconds to wait before repeating the same request.
+              example: "5"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessPaymentInitiationResponse'
+              examples:
+                pending:
+                  summary: Original operation is still pending
+                  value:
+                    message: Payment outcome pending; retrieve the original operation
+                    data:
+                      payment_initiation_id: "12345PI1714316400"
+                      amount: "50.00"
+                      currency: AUD
+                      settled: false
+                      status: initiated
+                      operation_id: op_2f1c0c4e-7b2a-4d3e-9a11-6c5b2a1d0e44
+                      merchant_reference: invoice-4201
+                      state_version: 1
                       created_at: "2026-04-28T13:45:00.000Z"
         '401':
           description: Invalid or missing bearer token.
@@ -2147,6 +2202,25 @@ components:
             - type: number
           description: Debit amount for this initiation.
           example: "10.00"
+        currency:
+          type: string
+          description: Currency of this initiation.
+          example: AUD
+        operation_id:
+          type: string
+          nullable: true
+          description: |
+            Present when the request included `Idempotency-Key`. Use it to retrieve the original operation.
+          example: op_2f1c0c4e-7b2a-4d3e-9a11-6c5b2a1d0e44
+        merchant_reference:
+          type: string
+          nullable: true
+          description: Merchant reference stored with the idempotency key. Null when the request omitted it.
+          example: invoice-4201
+        state_version:
+          type: integer
+          description: Monotonic version of this payment record.
+          example: 1
         status:
           type: string
           description: Current initiation processing status.
@@ -2386,6 +2460,13 @@ components:
             - type: string
           description: Debit amount to initiate for this request.
           example: "10.00"
+        merchant_reference:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: |
+            Optional merchant reference for this payment. Send it with `Idempotency-Key` when the caller has one.
+          example: invoice-4201
         notes:
           type: string
           maxLength: 140
