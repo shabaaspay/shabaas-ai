@@ -844,7 +844,6 @@ paths:
             maxLength: 128
             pattern: '^[A-Za-z0-9._:-]{16,128}$'
           description: |
-            Optional retry identity. Leave this header out to use the existing payment path.
             When sent, persist it and reuse the same value with the same body.
           example: payment-invoice-4201-v1
       requestBody:
@@ -908,7 +907,6 @@ paths:
                       created_at: "2026-04-28T13:45:00.000Z"
         '202':
           description: |
-            The payment result is not known yet. Returned only when `Idempotency-Key` was sent.
             `Retry-After` is 5 seconds. Repeat the same key and body. Do not create a new payment.
           headers:
             Retry-After:
