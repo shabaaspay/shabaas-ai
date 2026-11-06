@@ -1264,7 +1264,7 @@ paths:
         | PAS_AMT_INVALID | 400 | Amount format is invalid | Use a valid numeric amount format. |
         | R104 | 422 | Consent is missing or invalid | Set `consent_received` to `"true"` and retry. |
         | R101 | 422 | Amount exceeds allowed threshold | Reduce `amount` and retry. |
-        | R801 | 422 | Similar debit attempted within cooldown period | Wait for cooldown window and retry. |
+        | R801 | 422 | Similar debit attempted within 12 hours | Wait 12 hours and retry. |
         | R102 | 422 | Daily spend limit exceeded | Retry later or reduce amount. |
         | R100 | 422 | Daily transaction count exceeded | Retry next day or after account review. |
         | R103 | 422 | Destination payout not enabled | Update merchant payout settings or remove destination. |
@@ -1315,9 +1315,9 @@ paths:
                     error_code: R104
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
-                cooldown_23h:
+                cooldown_12h:
                   value:
-                    message: Similar payment attempted within last 23 hours
+                    message: Multiple payments attempted from same source account. Please wait 12 hours.
                     error_code: R801
                     data:
                       response_time: "2026-04-10T12:00:00.000Z"
