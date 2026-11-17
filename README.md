@@ -15,7 +15,7 @@ It contains SDKs and integration assets to connect ShaBaasPay with LLMs and agen
 
 1. [Create an account](https://www.shabaas.com/signup) with email and password, Google or GitHub. Your account opens in the staging dashboard.
 2. For a dashboard trial, select **Create Invoice**, enter the details and share the resulting payment-page link. The optional email flow sends the link to the customer.
-3. For an API trial, create an API key in the dashboard and [exchange it for a bearer token](https://shabaaspay-pay.readme.io/reference/post_api-public-authorization). Keep the key and token server-side.
+3. For an API trial, create an API key in the dashboard and [exchange it for a bearer token](https://docs.shabaas.com/api/post_api-public-authorization). Keep the key and token server-side.
 
 ```bash
 # Set SHABAAS_API_KEY securely in your shell first.
@@ -23,9 +23,9 @@ curl -X POST 'https://dev-api.shabaas.com/api/public/authorization' \
   -H "Authorization: ${SHABAAS_API_KEY}"
 ```
 
-Use the resulting bearer token for supported endpoints, following the [REST OpenAPI specification](./restapi/shabaaspay-public-api.yaml) and [API reference](https://shabaaspay-pay.readme.io/reference). An API response is not proof of payment settlement. Production access requires onboarding and approval for the intended use case.
+Use the resulting bearer token for supported endpoints, following the [REST OpenAPI specification](./restapi/shabaaspay-public-api.yaml) and [API reference](https://docs.shabaas.com/api). An API response is not proof of payment settlement. Production access requires onboarding and approval for the intended use case.
 
-**Implementation references:** [payment initiation statuses](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values) · [PayTo payment errors](https://shabaaspay-pay.readme.io/reference/payto-payment-error-codes) · [PayTo agreement errors](https://shabaaspay-pay.readme.io/reference/payto-agreement-error-codes) · [webhook notification examples](https://shabaaspay-pay.readme.io/reference/webhook-notification-management).
+**Implementation references:** [payment initiation statuses](https://docs.shabaas.com/api/payment-initiation-status-values) · [PayTo payment errors](https://docs.shabaas.com/api/payto-payment-error-codes) · [PayTo agreement errors](https://docs.shabaas.com/api/payto-agreement-error-codes) · [webhook notification examples](https://docs.shabaas.com/api/webhook-notification-management).
 
 ## Model Context Protocol (MCP)
 
@@ -36,7 +36,7 @@ Remote MCP endpoints:
 - Staging (sandbox evaluation): `https://mcp-staging.shabaas.com/mcp`
 - Production (approved access): `https://mcp.shabaas.com/mcp`
 
-See the [MCP connection guide](https://docs.shabaas.com/developer) for client setup and the currently advertised hosted tool list. The local toolkit, OpenAPI contract and deployed endpoint may expose different inventories; verify the tool list for the environment and credentials in use.
+See the [MCP connection guide](https://docs.shabaas.com/mcp) for client setup and the currently advertised hosted tool list. The local toolkit, OpenAPI contract and deployed endpoint may expose different inventories; verify the tool list for the environment and credentials in use.
 
 Local toolkit and MCP examples are available below and in `tools/typescript/packages/agent-toolkit/README.md`.
 
@@ -58,7 +58,7 @@ npm install @shabaaspay/agent-toolkit
 
 ### Usage
 
-The library needs to be configured with your account's API key, available in the [ShaBaas Developer Dashboard](https://docs.shabaas.com/dashboard). We strongly recommend using a restricted API key for better security and granular permissions. Tool availability is determined by the permissions configured for that key.
+The library needs to be configured with your account's API key, available in the [ShaBaas Developer Dashboard](https://dashboard.shabaas.com/dashboard). We strongly recommend using a restricted API key for better security and granular permissions. Tool availability is determined by the permissions configured for that key.
 
 ```ts
 import { ShabaasAgentToolkit } from '@shabaaspay/agent-toolkit';

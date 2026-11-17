@@ -16,7 +16,7 @@ npm install @shabaaspay/agent-toolkit
 
 ## Usage
 
-The library needs to be configured with your account's API key, available in the [ShaBaas Developer Dashboard](https://docs.shabaas.com/dashboard). We strongly recommend using a restricted API key for better security and granular permissions. Tool availability is determined by the permissions configured for that key.
+The library needs to be configured with your account's API key, available in the [ShaBaas Developer Dashboard](https://dashboard.shabaas.com/dashboard). We strongly recommend using a restricted API key for better security and granular permissions. Tool availability is determined by the permissions configured for that key.
 
 ```ts
 import { ShabaasAgentToolkit } from '@shabaaspay/agent-toolkit';
