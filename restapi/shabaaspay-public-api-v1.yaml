@@ -1696,7 +1696,20 @@ paths:
           otherwise the merchant payout account)
         - **`$20` remains on the business ledger** and is transferred end of day
 
-        `split_percentage_fee` and `destination` are both optional.
+        `split_percentage_fee` and `destination` are both optional on a first settlement.
+
+        A failed destination payout is retried with the received payment id, not the PayID address and not the failed settlement id:
+
+        ```json
+        {
+          "payment_initiation": {
+            "payment_initiation_id": "PYIDN01184126905",
+            "recover": true
+          }
+        }
+        ```
+
+        `recover` is optional. Leave it out and the existing PayID or payment-agreement request settles the first unpaid payment as it does today. `amount`, `split_percentage_fee`, `notes`, and `destination` are not accepted when `recover` is true. The saved split and destination on that payment are reused. A retry creates a new settlement id. The failed settlement id stays failed.
 
         ### Error Codes
         | Code | Status | Reason | What to do |
@@ -1709,6 +1722,9 @@ paths:
         | R803 | 422 | Upstream initiation failed | Retry; if persistent, contact support with request metadata. |
         | CREDITS_EXHAUSTED | 402 | Developer credits exhausted | Top up developer credits and retry. |
         | GN-0000 | 422 | Invalid `split_percentage_fee` | Use a number greater than 0 and less than 100 (e.g. `20` or `"20%"`). |
+        | — | 409 | No recovery is pending | Send `recover: true` only for a payment whose destination payout failed. |
+        | — | 409 | Payment already settled, in progress, or outcome unknown | Do not send another payout. Wait, or contact support when the outcome is unknown. |
+        | — | 422 | `amount`, `split_percentage_fee`, `notes`, or `destination` was sent with `recover: true` | Retry with only `payment_initiation_id` and `recover: true`. |
       requestBody:
         required: true
         content:
@@ -1734,6 +1750,12 @@ paths:
                     payment_agreement_id: "3652PA20260408123221550"
                     amount: 100
                     split_percentage_fee: 20
+              recover_failed_payout:
+                summary: Retry a failed destination payout
+                value:
+                  payment_initiation:
+                    payment_initiation_id: "PYIDN01184126905"
+                    recover: true
       responses:
         '200':
           description: Bookkeeper payment initiation created successfully.
@@ -1753,6 +1775,19 @@ paths:
                       transfer: null
                       split_percentage_fee: 20
                       created_at: "2026-04-28T13:45:00.000Z"
+                recovered:
+                  summary: Failed destination payout replaced with a new settlement id
+                  value:
+                    message: Success
+                    data:
+                      payment_initiation_id: "PYIDN01184126905"
+                      settled: true
+                      status: acsc
+                      transfer: transferred
+                      split_percentage_fee: 20
+                      settlement_id: "SETTLEMENT46871715200999"
+                      settlement_status: Completed
+                      created_at: "2026-11-07T04:19:55.000Z"
         '401':
           description: Invalid or missing bearer token.
           content:
@@ -1766,13 +1801,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Referenced payment agreement was not found for this merchant.
+          description: Referenced payment agreement or PayID payment was not found for this merchant.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The payment cannot be settled or retried. No payout is created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_recovery_pending:
+                  summary: recover true on a payment that has not failed
+                  value:
+                    message: No recovery is pending for this payment
         '422':
-          description: Validation or business rule failure.
+          description: Validation or business rule failure. A retry that includes amount, split, notes, or destination is rejected and no payout is created.
           content:
             application/json:
               schema:
@@ -2366,6 +2412,7 @@ components:
       description: |
         Bookkeeper request body for `POST /api/public/payment_initiation`.
         Send `split_percentage_fee` inside `payment_initiation` to retain a share on the ledger for EOD.
+        Do not send `destination` when `payment_initiation` is a `payment_initiation_id` retry.
       required: [payment_initiation]
       properties:
         payment_initiation:
@@ -2432,6 +2479,24 @@ components:
                 Must be greater than 0 and less than 100 when provided.
                 For `$100` with `20`, `$80` is paid out now and `$20` stays on the business ledger for EOD.
               example: 20
+        - title: payment_initiation_id
+          type: object
+          additionalProperties: false
+          required: [payment_initiation_id, recover]
+          properties:
+            payment_initiation_id:
+              type: string
+              description: |
+                Payment id of the received PayID payment whose destination payout failed.
+                This is the `PYID...` receipt, not the PayID address and not the failed `SETTLEMENT...` id.
+              example: PYIDN01184126905
+            recover:
+              type: boolean
+              enum: [true]
+              description: |
+                Must be true. Reuses the saved split and destination and creates a new settlement id
+                only after the provider confirms the failed settlement did not send the money.
+              example: true
 
     CreatePaymentInitiationBody:
       type: object
