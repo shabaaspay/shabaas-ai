@@ -1,23 +1,23 @@
 # REST API specification
 
-This directory contains the public REST API specification.
+This directory contains the canonical public REST operation definitions and their generated OpenAPI exports.
 
 - [`Shabaaspay Public API YAML`](./shabaaspay-public-api.yaml) — OpenAPI spec for API reference import.
 
-Use this file for ReadMe-facing REST documentation updates.
+Edit `operations.json` and regenerate the exports; do not maintain the YAML independently. API guides live at https://docs.shabaas.com/api and the interactive Explorer at https://apidocs.shabaas.com.
 
 ## Covered endpoint groups
 
 - Authorization
 - Payment Agreements (create, get, resend, bilateral amend, cancel, one-time)
-- Payment Initiations (create, get, direct-debit)
+- Payment Initiations (create, get, direct-debit, refunds and the Bookkeeper variant)
 - Webhooks (upsert, get)
 - PayID Collections (create, status)
-- Invoice generation
+- Hosted checkout links
 
 ## Start with a staging API key
 
-[Sign up](https://www.shabaas.com/signup) and create an API key in the staging dashboard. Keep it server-side. The API-key exchange returns a bearer token for subsequent supported requests; follow the [authorization reference](https://shabaaspay-pay.readme.io/reference/post_api-public-authorization).
+[Sign up](https://www.shabaas.com/signup) and create an API key in the staging dashboard. Keep it server-side. The API-key exchange returns a bearer token for subsequent supported requests; follow the [authorization reference](https://docs.shabaas.com/api/post_api-public-authorization).
 
 ```bash
 curl -X POST "https://dev-api.shabaas.com/api/public/authorization" \
@@ -158,10 +158,10 @@ curl -X POST "https://api.shabaas.com/api/v1/collections/payid" \
 
 ## Implementation references
 
-- [Payment initiation status values](https://shabaaspay-pay.readme.io/reference/payment-initiation-status-values)
-- [PayTo payment error codes](https://shabaaspay-pay.readme.io/reference/payto-payment-error-codes)
-- [PayTo agreement error codes and HTTP responses](https://shabaaspay-pay.readme.io/reference/payto-agreement-error-codes)
-- [Webhook notification examples](https://shabaaspay-pay.readme.io/reference/webhook-notification-management)
+- [Payment initiation status values](https://docs.shabaas.com/api/payment-initiation-status-values)
+- [PayTo payment error codes](https://docs.shabaas.com/api/payto-payment-error-codes)
+- [PayTo agreement error codes and HTTP responses](https://docs.shabaas.com/api/payto-agreement-error-codes)
+- [Webhook notification examples](https://docs.shabaas.com/api/webhook-notification-management)
 
 Webhook authentication and delivery behaviour must be confirmed against the current integration documentation; the linked notification page supplies examples, not a signature-verification contract.
 
