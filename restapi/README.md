@@ -1,19 +1,19 @@
 # REST API specification
 
-This directory contains the public REST API specification.
+This directory contains the canonical public REST operation definitions and their generated OpenAPI exports.
 
 - [`Shabaaspay Public API YAML`](./shabaaspay-public-api.yaml) — OpenAPI spec for API reference import.
 
-Use this file for ReadMe-facing REST documentation updates.
+Edit `operations.json` and regenerate the exports; do not maintain the YAML independently. API guides live at https://docs.shabaas.com/api and the interactive Explorer at https://apidocs.shabaas.com.
 
 ## Covered endpoint groups
 
 - Authorization
 - Payment Agreements (create, get, resend, bilateral amend, cancel, one-time)
-- Payment Initiations (create, get, direct-debit)
+- Payment Initiations (create, get, direct-debit, refunds and the Bookkeeper variant)
 - Webhooks (upsert, get)
 - PayID Collections (create, status)
-- Invoice generation
+- Hosted checkout links
 
 ## Start with a staging API key
 
@@ -164,3 +164,13 @@ curl -X POST "https://api.shabaas.com/api/v1/collections/payid" \
 - [Webhook notification examples](https://docs.shabaas.com/api/webhook-notification-management)
 
 Webhook authentication and delivery behaviour must be confirmed against the current integration documentation; the linked notification page supplies examples, not a signature-verification contract.
+
+## Authoritative source and generated exports
+
+Edit `restapi/operations.json` for public REST endpoint definitions. Each key is the documentation slug and contains a standalone OpenAPI definition. Run `python scripts/api_contract.py` to regenerate the JSON and YAML downloads, then `python scripts/api_contract.py --check` and `python -m unittest discover -s tests -p 'test_api_contract.py'`. JSON serialization in the `.yaml` file is valid YAML 1.2.
+
+Operation-scoped component names prevent schemas from different published endpoint definitions overwriting one another. Bookkeeper is a variant of POST `/api/public/payment_initiation`, retained in `x-operation-variants`; it is not a separate `/payment_initiation` endpoint. The export preserves its variant contract instead of silently replacing the normal payment request.
+
+The documentation site vendors this source at an immutable public commit. Its CI compares every rendered endpoint definition exactly, including fields, required flags, examples and response codes, and checks the upstream revision. Publish this repository first, then review the documentation pin update. ReadMe remains an interactive Explorer; importing a new source into ReadMe is an explicit publishing step, not automatic deployment by these workflows. MCP's `openapi/openapi.yaml` describes a different tool contract and is not replaced by the REST export.
+
+The first reconciliation imports the reviewed documentation definitions, restores missing `pay_id` in agreement examples and corrects Bookkeeper's route. It does not claim that every example has been executed live. Changes to API behaviour still require backend review; CI checks documentation consistency, not live implementation conformance.
